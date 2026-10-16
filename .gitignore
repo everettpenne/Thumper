@@ -21,3 +21,4 @@ tools/fake-jellyfin/hls/
 tools/fake-feeds/episode.mp3
 __pycache__/
 dist/
+tools/fake-feeds/short.mp3

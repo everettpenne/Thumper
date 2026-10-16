@@ -29,6 +29,9 @@ class Graph(app: Context) {
     /** Work that outlives a screen: refreshing, saving. */
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     val library = Library(File(app.filesDir, "library"), fetcher, scope)
+    val downloads = com.everettpenne.thumper.data.Downloads(app, File(app.getExternalFilesDir(null) ?: app.filesDir, "downloads").apply { mkdirs() }, library, settings, scope)
+    /** Where downloaded episodes are on this phone: the player plays these in preference to the network. */
+    val localFiles: com.everettpenne.thumper.playback.LocalFiles get() = downloads
 
     val refreshing = kotlinx.coroutines.flow.MutableStateFlow(false)
     private var lastRefresh = 0L

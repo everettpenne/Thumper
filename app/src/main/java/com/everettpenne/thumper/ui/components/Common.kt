@@ -38,6 +38,8 @@ interface Navigator {
     fun openSettings()
     fun addFeed(url: String? = null)
     fun openSearch()
+    fun openQueue()
+    fun openDownloads()
 }
 
 /** What a screen's data is doing. A reload keeps the old value on screen until the new one arrives. */

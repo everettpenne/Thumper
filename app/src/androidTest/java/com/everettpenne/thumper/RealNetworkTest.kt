@@ -51,4 +51,25 @@ class RealNetworkTest {
         assertTrue("a real episode should be playing through the audio system", audio)
         device.takeScreenshot(File(dir, "real-4-playing.png"))
     }
+
+    /** A real episode from a real public host through the system DownloadManager: the shortest of the latest ten, so it is quick. */
+    @Test fun downloadARealEpisodeAndPlayItFromTheFile() {
+        context.getSharedPreferences("thumper_settings", 0).edit().putBoolean("wifiOnlyDownloads", false).commit()
+        context.graph.settings.setWifiOnlyDownloads(false); context.graph.downloads.removeAll()
+        rule.onNodeWithContentDescription("Search").performClick(); waitFor("Popular on Apple Podcasts")
+        rule.onNode(hasSetTextAction()).performTextInput("darknet diaries"); waitFor("Darknet Diaries")
+        rule.onAllNodesWithText("Darknet Diaries")[0].performClick()
+        rule.waitUntil(90_000) { rule.onAllNodes(hasText("Subscribe") and hasClickAction()).fetchSemanticsNodes().isNotEmpty() }
+        rule.onAllNodes(hasText("Subscribe") and hasClickAction()).onFirst().performClick(); waitFor("Subscribed")
+        val shortest = context.graph.library.contents.value.values.single().episodes.take(10).filter { (it.durationSec ?: Int.MAX_VALUE) < 2_000 }.minByOrNull { it.durationSec ?: Int.MAX_VALUE }
+            ?: context.graph.library.contents.value.values.single().episodes.first()
+        rule.onNodeWithContentDescription("More for ${shortest.title}").performScrollTo().performClick()
+        rule.onNodeWithText("Download").performClick()
+        rule.waitUntil(240_000) { context.graph.downloads.state.value[shortest.id]?.status == com.everettpenne.thumper.data.DownloadStatus.DONE }
+        val file = context.graph.downloads.fileFor(shortest.id)
+        assertTrue("a real episode should be on the phone: $file", file != null && file.length() > 100_000)
+        device.takeScreenshot(File(dir, "real-5-downloaded.png"))
+        context.graph.downloads.removeAll()
+        assertTrue("and gone again", context.graph.downloads.fileFor(shortest.id) == null)
+    }
 }

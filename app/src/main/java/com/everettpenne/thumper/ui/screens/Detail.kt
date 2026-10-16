@@ -68,6 +68,12 @@ fun EpisodeScreen(feedId: String, episodeId: String, nav: Navigator, onBack: () 
                     GlassIconButton(Icons.Rounded.Share, "Share", { context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, "${episode.title} — $link"), null)) }, size = 48)
                 }
             }
+            val download = graph.downloads.state.collectAsState().value[episode.id]
+            when (download?.status) {
+                null, com.everettpenne.thumper.data.DownloadStatus.FAILED -> GlassButton({ graph.downloads.download(episode, feed) }, Modifier.fillMaxWidth()) { Icon(Icons.Rounded.Download, null); Text(if (download != null) "Download failed. Try again" else "Download") }
+                com.everettpenne.thumper.data.DownloadStatus.DONE -> GlassButton({ graph.downloads.remove(episode.id) }, Modifier.fillMaxWidth()) { Icon(Icons.Rounded.DownloadDone, null); Text("Downloaded  ·  ${Format.bytes(download.bytes)}  ·  Remove") }
+                else -> GlassButton({ graph.downloads.remove(episode.id) }, Modifier.fillMaxWidth()) { Icon(Icons.Rounded.Cancel, null); Text(download.problem ?: ("Downloading" + (download.fraction?.let { "  ${(it * 100).toInt()}%" } ?: "…")) + "  ·  Cancel") }
+            }
             if (episode.summaryHtml.isNotBlank()) RichText(episode.summaryHtml) else Text("No show notes.", color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }

@@ -20,6 +20,8 @@ val ThumperJson = Json { ignoreUnknownKeys = true; isLenient = true; coerceInput
     val siteUrl: String? = null,
     val kind: FeedKind = FeedKind.PODCAST,
     val addedAt: Long = 0,
+    /** Download this show's new episodes as they arrive (on the next refresh while the app is open). */
+    val autoDownload: Boolean = false,
 )
 
 /** One episode of a podcast: what to play and what to show. [summaryHtml] is the show notes as the publisher wrote them (HTML). */
@@ -71,6 +73,12 @@ val ThumperJson = Json { ignoreUnknownKeys = true; isLenient = true; coerceInput
     /** How far through, 0..1, or null when not started or finished. */
     val fraction: Float? get() = if (!played && durationMs > 0 && positionMs > 0) (positionMs.toFloat() / durationMs).coerceIn(0f, 1f) else null
 }
+
+/**
+ * One place in Up Next. It carries its own copy of the episode and its show, so it survives the feed trimming its old episodes, and works for a show you
+ * queued from a search without subscribing.
+ */
+@Serializable data class QueueEntry(val episode: Episode, val feed: Feed)
 
 /** A show found in a directory (Apple's, or Podcast Index): enough to show a row and to subscribe by its feed address. */
 data class DirectoryShow(val title: String, val author: String, val feedUrl: String, val imageUrl: String?, val description: String = "", val genre: String = "")

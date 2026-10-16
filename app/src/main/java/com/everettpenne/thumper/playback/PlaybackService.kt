@@ -41,18 +41,21 @@ class PlaybackService : MediaSessionService() {
     private var sleepAtEnd = false
     private val sleepRunnable = Runnable { session?.player?.pause() }
     private var saver: ProgressSaver? = null
+    private var queue: QueueSync? = null
 
     override fun onCreate() {
         super.onCreate()
         val graph = applicationContext.graph
         val player = ExoPlayer.Builder(this)
-            .setMediaSourceFactory(DefaultMediaSourceFactory(OkHttpDataSource.Factory(graph.http)))
+            // DefaultDataSource: the network through OkHttp, and files (a downloaded episode) from the phone
+            .setMediaSourceFactory(DefaultMediaSourceFactory(androidx.media3.datasource.DefaultDataSource.Factory(this, OkHttpDataSource.Factory(graph.http))))
             // Speech, not music: the system treats it accordingly (another app's short sound ducks it rather than pausing it).
             .setAudioAttributes(AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_SPEECH).build(), true)
             .setHandleAudioBecomingNoisy(true)
             .setSeekBackIncrementMs(graph.settings.skipBackSeconds.value * 1000L).setSeekForwardIncrementMs(graph.settings.skipForwardSeconds.value * 1000L)
             .build()
         saver = ProgressSaver(player, graph.library).also { player.addListener(it) }
+        queue = QueueSync(player, graph.library, graph.localFiles).also { player.addListener(it) }
         player.addListener(object : Player.Listener {
             override fun onPlaybackStateChanged(state: Int) { if (state == Player.STATE_ENDED) cancelSleep() }
             override fun onPositionDiscontinuity(old: Player.PositionInfo, new: Player.PositionInfo, reason: Int) { if (sleepAtEnd && reason == Player.DISCONTINUITY_REASON_AUTO_TRANSITION) { player.pause(); cancelSleep() } }
@@ -85,7 +88,7 @@ class PlaybackService : MediaSessionService() {
     override fun onTaskRemoved(rootIntent: Intent?) { pauseAllPlayersAndStopSelf() }
 
     override fun onDestroy() {
-        cancelSleep(); saver?.finish()
+        cancelSleep(); saver?.finish(); queue?.release()
         session?.let { it.player.release(); it.release() }
         session = null
         super.onDestroy()

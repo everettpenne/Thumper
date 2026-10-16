@@ -225,6 +225,58 @@ class DataLayerTest {
         scope.cancel()
     }
 
+    private fun entry(n: Int) = QueueEntry(Episode("e$n", "f", "Episode $n", "https://a/$n.mp3", publishedAt = n.toLong()), Feed("f", "https://f", "Show"))
+
+    @Test fun `up next keeps its order, never repeats an episode, and survives a restart`() = runBlocking {
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO); val lib = newLibrary(scope)
+        val (a, b, c, d) = (1..4).map { entry(it) }
+        lib.enqueue(a.episode, a.feed); lib.enqueue(b.episode, b.feed); lib.enqueue(c.episode, c.feed)
+        assertEquals(listOf("e1", "e2", "e3"), lib.queue.value.map { it.episode.id })
+        lib.enqueue(d.episode, d.feed, next = true); assertEquals(listOf("e4", "e1", "e2", "e3"), lib.queue.value.map { it.episode.id })
+        lib.enqueue(c.episode, c.feed, next = true); assertEquals("queued again: it moves, it doesn't repeat", listOf("e3", "e4", "e1", "e2"), lib.queue.value.map { it.episode.id })
+        lib.enqueue(a.episode, a.feed); assertEquals(listOf("e3", "e4", "e2", "e1"), lib.queue.value.map { it.episode.id })
+        lib.moveInQueue(3, 0); assertEquals(listOf("e1", "e3", "e4", "e2"), lib.queue.value.map { it.episode.id })
+        lib.moveInQueue(0, 2); assertEquals(listOf("e3", "e4", "e1", "e2"), lib.queue.value.map { it.episode.id })
+        lib.moveInQueue(0, 9); lib.moveInQueue(-1, 1); lib.moveInQueue(2, 2); assertEquals("bad moves change nothing", listOf("e3", "e4", "e1", "e2"), lib.queue.value.map { it.episode.id })
+        lib.dequeue("e4"); lib.dequeue("nope"); assertEquals(listOf("e3", "e1", "e2"), lib.queue.value.map { it.episode.id }); assertTrue(lib.isQueued("e1")); assertFalse(lib.isQueued("e4"))
+        lib.flush(); delay(200)
+        val again = newLibrary(scope)
+        assertEquals(listOf("e3", "e1", "e2"), again.queue.value.map { it.episode.id })
+        assertEquals("a queued episode carries its own copy of the show", "Show", again.queue.value[0].feed.title)
+        again.clearQueue(); again.flush(); delay(200); assertTrue(newLibrary(scope).queue.value.isEmpty())
+        lib.enqueue(a.episode, a.feed); lib.reset(); assertTrue("a reset empties the queue too", lib.queue.value.isEmpty())
+        scope.cancel()
+    }
+
+    @Test fun `downloaded files are named by episode, with the kind of file the address says`() {
+        fun ep(url: String) = Episode("abc123", "f", "t", url)
+        assertEquals("abc123.mp3", com.everettpenne.thumper.data.Downloads.fileNameFor(ep("https://cdn.example/show/ep1.mp3?token=1")))
+        assertEquals("abc123.m4a", com.everettpenne.thumper.data.Downloads.fileNameFor(ep("https://cdn.example/ep1.M4A")))
+        assertEquals("abc123.mp3", com.everettpenne.thumper.data.Downloads.fileNameFor(ep("https://cdn.example/stream?id=9")))
+        assertEquals("abc123.opus", com.everettpenne.thumper.data.Downloads.fileNameFor(ep("https://cdn.example/a/b.opus#frag")))
+    }
+
+    @Test fun `a refresh reports the new episodes, never the first fetch, and keeps a show's auto-download choice`() = runBlocking {
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        server.enqueue(MockResponse().setBody(resource("podcast-mixed.xml")))
+        val content = ((FeedFetcher(client).fetch(url("/feed.xml")) as ApiResult.Ok).value as FeedFetch.Updated).content
+        val lib = newLibrary(scope)
+        val seen = java.util.concurrent.CopyOnWriteArrayList<Pair<Feed, List<Episode>>>()
+        val collector = scope.launch { lib.newEpisodes.collect { seen += it } }
+        delay(100)
+        lib.subscribe(content); lib.setAutoDownload(content.feed.id, true)
+        assertTrue(lib.feeds.value.single().autoDownload); assertTrue(lib.content(content.feed.id)!!.feed.autoDownload)
+        val extra = resource("podcast-mixed.xml").replace("</channel>", """<item><title>Ep 3</title><guid>ep-3</guid><pubDate>Wed, 14 Oct 2026 10:00:00 +0000</pubDate><enclosure url="https://cdn.example/ep3.mp3" type="audio/mpeg"/></item></channel>""")
+        server.enqueue(MockResponse().setBody(extra))
+        lib.refresh(content.feed.id); delay(300)
+        assertEquals("only the episode that was not there before", listOf("Ep 3"), seen.single().second.map { it.title })
+        assertTrue("the feed in the event still asks for auto-download", seen.single().first.autoDownload)
+        assertTrue("and a refresh does not undo the choice", lib.feeds.value.single().autoDownload && lib.content(content.feed.id)!!.feed.autoDownload)
+        server.enqueue(MockResponse().setBody(extra)); lib.refresh(content.feed.id); delay(200)
+        assertEquals("nothing new the second time", 1, seen.size)
+        collector.cancel(); scope.cancel()
+    }
+
     @Test fun `the lists on the home screens`() {
         fun ep(id: String, at: Long) = Episode(id, "f", id, "https://a/$id.mp3", publishedAt = at)
         val pod = FeedContent(Feed("f", "https://f", "Pod", kind = FeedKind.PODCAST), episodes = listOf(ep("new", 300), ep("mid", 200), ep("old", 100)))

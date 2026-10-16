@@ -27,7 +27,8 @@ class ProgressSaver(private val player: Player, private val library: Library) : 
 
     /** An item replaced or cleared: save the old one where it stopped. */
     override fun onPositionDiscontinuity(oldPosition: Player.PositionInfo, newPosition: Player.PositionInfo, reason: Int) {
-        if (reason == Player.DISCONTINUITY_REASON_REMOVE || reason == Player.DISCONTINUITY_REASON_AUTO_TRANSITION) save(oldPosition.mediaItem, oldPosition.positionMs)
+        val changedItem = oldPosition.mediaItem?.mediaId != newPosition.mediaItem?.mediaId
+        if (reason == Player.DISCONTINUITY_REASON_REMOVE || reason == Player.DISCONTINUITY_REASON_AUTO_TRANSITION || (reason == Player.DISCONTINUITY_REASON_SEEK && changedItem)) save(oldPosition.mediaItem, oldPosition.positionMs)
     }
 
     fun finish() { handler.removeCallbacks(tick); save() }

@@ -1,0 +1,90 @@
+package com.everettpenne.thumper.ui.screens
+
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.*
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import com.everettpenne.thumper.data.model.QueueEntry
+import com.everettpenne.thumper.graph
+import com.everettpenne.thumper.playback.LocalPlayback
+import com.everettpenne.thumper.ui.components.*
+import com.everettpenne.thumper.ui.glass.*
+import com.everettpenne.thumper.ui.theme.IosType
+import com.everettpenne.thumper.ui.theme.Thumper
+import com.everettpenne.thumper.util.Format
+
+/** Up Next: what is playing and what follows, in order. Each entry can play now, move, or leave the queue. */
+@Composable
+fun QueueScreen(nav: Navigator, onBack: () -> Unit) {
+    val graph = LocalContext.current.graph
+    val library = graph.library
+    val playback = LocalPlayback.current
+    val queue by library.queue.collectAsState()
+
+    GlassScreen(bars = {
+        GlassCenteredTopBar("Up Next", onBack, Modifier.align(Alignment.TopCenter), subtitle = if (queue.isEmpty()) null else "${queue.size} episode" + if (queue.size == 1) "" else "s",
+            trailing = { if (queue.isNotEmpty()) GlassIconButton(Icons.Rounded.ClearAll, "Clear Up Next", { library.clearQueue() }, size = 44) })
+    }) {
+        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = topContentPadding() + 4.dp, bottom = bottomContentPadding()), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            if (playback.hasEpisode) item {
+                SectionTitle("Now Playing"); Spacer(Modifier.height(6.dp))
+                Row(Modifier.fillMaxWidth().clickable(onClick = nav::openPlayer).padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Artwork(playback.artworkUrl, 52.dp)
+                    Column(Modifier.weight(1f)) {
+                        Text(playback.title, style = MaterialTheme.typography.titleSmall, color = Thumper.accent, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        Text(playback.showTitle, style = IosType.caption1, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                    }
+                    PlayCircle(playback.isPlaying, playback::toggle)
+                }
+                Spacer(Modifier.height(10.dp))
+            }
+            if (queue.isEmpty()) item { EmptyState(Icons.Rounded.PlaylistAdd, "Nothing up next", "Add episodes with the ••• on any episode, and they play one after another.") }
+            else {
+                item { SectionTitle("Next") { if (!playback.hasEpisode) GlassButton("Play", { queue.firstOrNull()?.let { playback.play(it.episode, it.feed) } }, prominent = true) } }
+                itemsIndexed(queue, key = { _, e -> e.episode.id }) { index, entry -> QueueRow(entry, index, queue.lastIndex, nav) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun QueueRow(entry: QueueEntry, index: Int, last: Int, nav: Navigator) {
+    val library = LocalContext.current.graph.library
+    val playback = LocalPlayback.current
+    var menu by remember { mutableStateOf(false) }
+    val e = entry.episode
+    Row(Modifier.fillMaxWidth().clickable { nav.openEpisode(entry.feed.id, e.id) }.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text("${index + 1}", style = IosType.footnote, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(18.dp))
+        Artwork(e.imageUrl ?: entry.feed.imageUrl, 52.dp)
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(entry.feed.title, style = IosType.caption1, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(e.title, style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(listOf(Format.relativeDate(e.publishedAt), Format.duration(e.durationSec)).filter { it.isNotEmpty() }.joinToString("  ·  "), style = IosType.caption1, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Box {
+            Box(Modifier.size(40.dp).clip(CircleShape).clickable { menu = true }.semantics { contentDescription = "Options for ${e.title}" }, Alignment.Center) { Icon(Icons.Rounded.MoreVert, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) }
+            GlassDropdownMenu(menu, { menu = false }) {
+                GlassMenuItem("Play Now", { menu = false; playback.play(e, entry.feed) }, icon = Icons.Rounded.PlayArrow)
+                if (index > 0) GlassMenuItem("Move to Top", { menu = false; library.moveInQueue(index, 0) }, icon = Icons.Rounded.VerticalAlignTop)
+                if (index > 0) GlassMenuItem("Move Up", { menu = false; library.moveInQueue(index, index - 1) }, icon = Icons.Rounded.ArrowUpward)
+                if (index < last) GlassMenuItem("Move Down", { menu = false; library.moveInQueue(index, index + 1) }, icon = Icons.Rounded.ArrowDownward)
+                GlassMenuItem("Remove", { menu = false; library.dequeue(e.id) }, icon = Icons.Rounded.Close, destructive = true)
+            }
+        }
+    }
+}

@@ -7,9 +7,9 @@ import org.junit.Test
 
 class AddressTest {
     @Test fun `addresses are told from searches`() {
-        for (a in listOf("https://x.example/feed.xml", "http://10.0.2.2:8097/blog", "feed://x.example/f", "pcast://x.example/f", "example.com", "example.com/feed.xml", "10.0.2.2:8097/blog", "blog.example.co.uk/rss", "localhost.example:8080"))
+        for (a in listOf("https://x.example/feed.xml", "http://10.0.2.2:8097/blog", "feed://x.example/f", "pcast://x.example/f", "example.com", "example.com/feed.xml", "10.0.2.2:8097/blog", "blog.example.co.uk/rss", "localhost.example:8080", "nas:8080/feed.xml", "localhost:8097/feeds/show.xml", "podcast-box:443"))
             assertTrue(a, looksLikeAddress(a))
-        for (q in listOf("", "  ", "darknet diaries", "radiolab", "99% invisible", "this american life", "a.b c", "hello"))
+        for (q in listOf("", "  ", "darknet diaries", "radiolab", "99% invisible", "this american life", "a.b c", "hello", "season 2", "ep:3", "note: this"))
             assertFalse(q, looksLikeAddress(q))
     }
 }

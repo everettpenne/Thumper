@@ -40,13 +40,14 @@ private val SKIPS = listOf(10, 15, 30, 45, 60)
 private val SPEEDS = listOf(0.8f, 1f, 1.2f, 1.5f, 2f)
 
 @Composable
-fun SettingsScreen(onBack: () -> Unit) {
+fun SettingsScreen(nav: Navigator, onBack: () -> Unit) {
     val context = LocalContext.current
     val graph = context.graph
     val settings = graph.settings
     val scope = rememberCoroutineScope()
     val uri = LocalUriHandler.current
     val choice by settings.directory.collectAsState(); val back by settings.skipBackSeconds.collectAsState(); val forward by settings.skipForwardSeconds.collectAsState(); val speed by settings.speed.collectAsState()
+    val wifiOnly by settings.wifiOnlyDownloads.collectAsState(); val deletePlayed by settings.deleteWhenPlayed.collectAsState(); val downloadBytes by graph.downloads.totalBytes.collectAsState(0L)
     val hasKeys by settings.hasPodcastIndexKeys.collectAsState(); val feeds by graph.library.feeds.collectAsState(); val refreshing by graph.refreshing.collectAsState()
     var key by remember { mutableStateOf(settings.keys()?.first.orEmpty()) }; var secret by remember { mutableStateOf(settings.keys()?.second.orEmpty()) }
     var message by remember { mutableStateOf<String?>(null) }
@@ -99,6 +100,11 @@ fun SettingsScreen(onBack: () -> Unit) {
                     Labeled("Starting speed") { SPEEDS.forEach { s -> GlassChip(s == speed, { settings.setSpeed(s) }) { Text(Format.speed(s)) } } }
                 }
             }
+            Group("Downloads", footer = "Downloaded episodes are saved in the app's own storage and play with no connection.") {
+                SwitchRow(Icons.Rounded.Wifi, "Download Only on Wi-Fi", wifiOnly, settings::setWifiOnlyDownloads)
+                SwitchRow(Icons.Rounded.AutoDelete, "Delete After Playing", deletePlayed, settings::setDeleteWhenPlayed)
+                NavRow(Icons.Rounded.DownloadForOffline, "Manage Downloads", Format.bytes(downloadBytes) + " on this phone") { nav.openDownloads() }
+            }
             Group("Library", footer = "OPML is the list of subscriptions every podcast app and feed reader can import and export, so you can bring yours here or take it anywhere.") {
                 NavRow(Icons.Rounded.Refresh, if (refreshing) "Refreshing…" else "Refresh Everything Now", "${feeds.size} subscriptions") { scope.launch { val r = graph.refreshAll(force = true); if (r != null) message = "${r.updated} updated, ${r.failed.size} couldn't be reached." } }
                 NavRow(Icons.Rounded.FileDownload, "Import Subscriptions", "From an OPML file") { import.launch("*/*") }
@@ -150,3 +156,5 @@ private fun RowShell(icon: ImageVector?, title: String, subtitle: String?, onCli
 @Composable private fun Info(icon: ImageVector, title: String, subtitle: String) = RowShell(icon, title, subtitle, null) {}
 @Composable private fun NavRow(icon: ImageVector, title: String, subtitle: String?, onClick: () -> Unit) = RowShell(icon, title, subtitle, onClick) { Icon(Icons.Rounded.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) }
 @Composable private fun ChoiceRow(title: String, selected: Boolean, onClick: () -> Unit) = RowShell(null, title, null, onClick) { if (selected) Icon(Icons.Rounded.Check, "Selected", tint = Thumper.accent) }
+
+@Composable private fun SwitchRow(icon: ImageVector, title: String, checked: Boolean, onChange: (Boolean) -> Unit) = RowShell(icon, title, null, { onChange(!checked) }) { LiquidSwitch(checked, onChange) }

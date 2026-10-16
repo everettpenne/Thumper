@@ -11,6 +11,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.collectAsState
+import com.everettpenne.thumper.graph
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -83,9 +89,54 @@ fun EpisodeRow(
                 add(if (!left.isNullOrEmpty()) left else Format.duration(episode.durationSec))
                 if (played) add("Played")
             }.filter { it.isNotEmpty() }.joinToString("  ·  ")
-            Text(meta, style = IosType.caption1, color = if (progress?.fraction != null) Thumper.accent else MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                DownloadBadge(episode.id)
+                Text(meta, style = IosType.caption1, color = if (progress?.fraction != null) Thumper.accent else MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+            }
         }
         PlayCircle(playback.isPlaying && current, onPlay)
+        EpisodeMenuButton(episode, feed)
+    }
+}
+
+/** A small mark before an episode's details: a tick-arrow when it is on the phone, a ring filling up while it downloads. */
+@Composable
+fun DownloadBadge(episodeId: String) {
+    val state by androidx.compose.ui.platform.LocalContext.current.graph.downloads.state.collectAsState()
+    when (val d = state[episodeId]) {
+        null -> {}
+        else -> when (d.status) {
+            com.everettpenne.thumper.data.DownloadStatus.DONE -> Icon(Icons.Rounded.DownloadDone, "Downloaded", tint = Thumper.accent, modifier = Modifier.size(14.dp))
+            com.everettpenne.thumper.data.DownloadStatus.FAILED -> Icon(Icons.Rounded.ErrorOutline, "Download failed", tint = Thumper.red, modifier = Modifier.size(14.dp))
+            else -> androidx.compose.material3.CircularProgressIndicator(progress = { d.fraction ?: 0f }, modifier = Modifier.size(12.dp), strokeWidth = 2.dp, color = Thumper.accent)
+        }
+    }
+}
+
+/** The "•••" on an episode: play it next, queue it, download it, mark it played. */
+@Composable
+fun EpisodeMenuButton(episode: Episode, feed: Feed, modifier: Modifier = Modifier) {
+    val graph = androidx.compose.ui.platform.LocalContext.current.graph
+    val library = graph.library
+    val queue by library.queue.collectAsState(); val progress by library.progress.collectAsState(); val downloads by graph.downloads.state.collectAsState()
+    var open by remember { mutableStateOf(false) }
+    val queued = queue.any { it.episode.id == episode.id }
+    val played = progress[episode.id]?.played == true
+    Box(modifier) {
+        Box(Modifier.size(40.dp).clip(CircleShape).clickable { open = true }.semantics { contentDescription = "More for ${episode.title}" }, Alignment.Center) {
+            Icon(Icons.Rounded.MoreHoriz, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        com.everettpenne.thumper.ui.glass.GlassDropdownMenu(open, { open = false }) {
+            com.everettpenne.thumper.ui.glass.GlassMenuItem("Play Next", { library.enqueue(episode, feed, next = true); open = false }, icon = Icons.Rounded.QueuePlayNext)
+            if (queued) com.everettpenne.thumper.ui.glass.GlassMenuItem("Remove from Up Next", { library.dequeue(episode.id); open = false }, icon = Icons.Rounded.PlaylistRemove)
+            else com.everettpenne.thumper.ui.glass.GlassMenuItem("Add to Up Next", { library.enqueue(episode, feed); open = false }, icon = Icons.Rounded.PlaylistAdd)
+            when (downloads[episode.id]?.status) {
+                null, com.everettpenne.thumper.data.DownloadStatus.FAILED -> com.everettpenne.thumper.ui.glass.GlassMenuItem("Download", { graph.downloads.download(episode, feed); open = false }, icon = Icons.Rounded.Download)
+                com.everettpenne.thumper.data.DownloadStatus.DONE -> com.everettpenne.thumper.ui.glass.GlassMenuItem("Remove Download", { graph.downloads.remove(episode.id); open = false }, icon = Icons.Rounded.DeleteOutline)
+                else -> com.everettpenne.thumper.ui.glass.GlassMenuItem("Cancel Download", { graph.downloads.remove(episode.id); open = false }, icon = Icons.Rounded.Cancel)
+            }
+            com.everettpenne.thumper.ui.glass.GlassMenuItem(if (played) "Mark as Unplayed" else "Mark as Played", { library.markPlayed(episode.id, !played); open = false }, icon = if (played) Icons.Rounded.RadioButtonUnchecked else Icons.Rounded.CheckCircleOutline)
+        }
     }
 }
 

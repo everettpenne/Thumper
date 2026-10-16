@@ -1,5 +1,6 @@
 package com.everettpenne.thumper.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -33,6 +34,7 @@ fun ListenScreen(nav: Navigator) {
     val playback = LocalPlayback.current
     val feeds by library.feeds.collectAsState(); val contents by library.contents.collectAsState(); val progress by library.progress.collectAsState()
     val refreshing by graph.refreshing.collectAsState()
+    val queue by library.queue.collectAsState()
     val scope = rememberCoroutineScope()
     val podcasts = feeds.filter { it.kind == FeedKind.PODCAST }
     val inProgress = remember(contents, progress) { Derived.inProgress(contents, progress) }
@@ -41,7 +43,7 @@ fun ListenScreen(nav: Navigator) {
 
     GlassScreen(bars = {
         GlassTopBar("Listen", Modifier.align(Alignment.TopCenter)) {
-            GlassActionPill { PillIcon(Icons.Rounded.Add, "Add a feed", { nav.addFeed() }); PillIcon(Icons.Rounded.Settings, "Settings", nav::openSettings) }
+            GlassActionPill { PillIcon(Icons.Rounded.DownloadForOffline, "Downloads", nav::openDownloads); PillIcon(Icons.Rounded.Add, "Add a feed", { nav.addFeed() }); PillIcon(Icons.Rounded.Settings, "Settings", nav::openSettings) }
         }
     }) {
         PullToRefreshBox(refreshing, { scope.launch { graph.refreshAll(force = true) } }, Modifier.fillMaxSize()) {
@@ -55,6 +57,13 @@ fun ListenScreen(nav: Navigator) {
                         }
                     }
                     Spacer(Modifier.height(10.dp))
+                }
+                if (queue.isNotEmpty()) {
+                    item { SectionTitle("Up Next") { androidx.compose.material3.Text("See all", style = com.everettpenne.thumper.ui.theme.IosType.subheadline.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold), color = com.everettpenne.thumper.ui.theme.Thumper.accent, modifier = Modifier.clickable { nav.openQueue() }) } }
+                    items(queue.take(3), key = { "q-" + it.episode.id }) { (ep, feed) ->
+                        EpisodeRow(ep, feed, progress[ep.id], { nav.openEpisode(feed.id, ep.id) }, { playback.play(ep, feed) })
+                    }
+                    item { Spacer(Modifier.height(6.dp)) }
                 }
                 if (podcasts.isNotEmpty()) item {
                     SectionTitle("Your Shows")

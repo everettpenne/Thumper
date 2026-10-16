@@ -31,7 +31,7 @@ class Library(
     private val clock: () -> Long = { System.currentTimeMillis() },
     private val saveDelayMs: Long = 1_500,
 ) {
-    @Serializable private data class State(val progress: List<Progress> = emptyList(), val read: List<String> = emptyList())
+    @Serializable private data class State(val progress: List<Progress> = emptyList(), val read: List<String> = emptyList(), val queue: List<QueueEntry> = emptyList())
 
     private val subscriptionsFile = File(dir, "subscriptions.json")
     private val stateFile = File(dir, "state.json")
@@ -41,7 +41,11 @@ class Library(
     private val _contents = MutableStateFlow<Map<String, FeedContent>>(emptyMap())
     private val _progress = MutableStateFlow(readState().progress.associateBy { it.episodeId })
     private val _read = MutableStateFlow(readState().read.toSet())
+    private val _queue = MutableStateFlow(readState().queue)
     private var saveJob: Job? = null
+    private val _newEpisodes = kotlinx.coroutines.flow.MutableSharedFlow<Pair<Feed, List<Episode>>>(extraBufferCapacity = 16)
+    /** Emitted after a refresh finds episodes that were not there before (newest first), with the show: what auto-download listens for. */
+    val newEpisodes: kotlinx.coroutines.flow.SharedFlow<Pair<Feed, List<Episode>>> = _newEpisodes
 
     /** The subscriptions, in the order they were added (newest last). */
     val feeds: StateFlow<List<Feed>> = _feeds.asStateFlow()
@@ -49,6 +53,8 @@ class Library(
     val contents: StateFlow<Map<String, FeedContent>> = _contents.asStateFlow()
     val progress: StateFlow<Map<String, Progress>> = _progress.asStateFlow()
     val read: StateFlow<Set<String>> = _read.asStateFlow()
+    /** Up Next: the episodes that will play after the current one, in order. The episode playing now is not in it. */
+    val queue: StateFlow<List<QueueEntry>> = _queue.asStateFlow()
 
     init { scope.launch { loadContents() } }
 
@@ -83,6 +89,14 @@ class Library(
 
     fun content(feedId: String): FeedContent? = _contents.value[feedId]
 
+    /** Turns "download this show's new episodes" on or off. */
+    fun setAutoDownload(feedId: String, on: Boolean) {
+        _feeds.update { list -> list.map { if (it.id == feedId) it.copy(autoDownload = on) else it } }
+        _contents.update { m -> m[feedId]?.let { c -> m + (feedId to c.copy(feed = c.feed.copy(autoDownload = on))) } ?: m }
+        _contents.value[feedId]?.let { c -> scope.launch(Dispatchers.IO) { writeContent(c) } }
+        scheduleSave()
+    }
+
     // ---- refreshing --------------------------------------------------------------------------------------------------------
 
     /** Fetches one feed and stores what is new. A failure leaves the saved copy as it was. */
@@ -94,7 +108,12 @@ class Library(
             is ApiResult.Ok -> when (val f = r.value) {
                 FeedFetch.Unchanged -> { previous?.let { store(it.copy(fetchedAt = clock())) }; ApiResult.Ok(false) }
                 is FeedFetch.Updated -> {
-                    store(trim(f.content).let { it.copy(feed = it.feed.copy(addedAt = feed.addedAt)) })
+                    val stored = trim(f.content).let { it.copy(feed = it.feed.copy(addedAt = feed.addedAt, autoDownload = feed.autoDownload)) }
+                    store(stored)
+                    if (previous != null) {                         // not the first fetch: whatever is now there that was not before is new
+                        val seen = previous.episodes.map { it.id }.toSet()
+                        stored.episodes.filter { it.id !in seen }.takeIf { it.isNotEmpty() }?.let { _newEpisodes.tryEmit(stored.feed to it) }
+                    }
                     ApiResult.Ok(true)
                 }
             }
@@ -145,9 +164,30 @@ class Library(
 
     /** Removes every subscription, saved feed, listening position and read mark. (For a fresh start, and for tests.) */
     suspend fun reset() {
-        _feeds.value = emptyList(); _contents.value = emptyMap(); _progress.value = emptyMap(); _read.value = emptySet()
+        _feeds.value = emptyList(); _contents.value = emptyMap(); _progress.value = emptyMap(); _read.value = emptySet(); _queue.value = emptyList()
         withContext(Dispatchers.IO) { feedsDir.listFiles()?.forEach { it.delete() } }
         flush()
+    }
+
+    // ---- up next -----------------------------------------------------------------------------------------------------------
+
+    /** Adds an episode to Up Next: at the front ([next]) or the end. An episode already queued moves rather than appearing twice. */
+    fun enqueue(episode: Episode, feed: Feed, next: Boolean = false) {
+        val entry = QueueEntry(episode.copy(summaryHtml = episode.summaryHtml.take(MAX_NOTES)), feed)
+        _queue.update { q -> val rest = q.filterNot { it.episode.id == episode.id }; if (next) listOf(entry) + rest else rest + entry }
+        scheduleSave()
+    }
+
+    fun dequeue(episodeId: String) { if (_queue.value.any { it.episode.id == episodeId }) { _queue.update { q -> q.filterNot { it.episode.id == episodeId } }; scheduleSave() } }
+    fun isQueued(episodeId: String) = _queue.value.any { it.episode.id == episodeId }
+    fun clearQueue() { _queue.value = emptyList(); scheduleSave() }
+
+    /** Moves the entry at [from] to position [to] (both indices into the current queue; out-of-range moves are ignored). */
+    fun moveInQueue(from: Int, to: Int) {
+        _queue.update { q ->
+            if (from !in q.indices || to !in q.indices || from == to) q else q.toMutableList().apply { add(to, removeAt(from)) }
+        }
+        scheduleSave()
     }
 
     // ---- files -------------------------------------------------------------------------------------------------------------
@@ -172,7 +212,7 @@ class Library(
     /** Writes the subscriptions and state now (the delayed save is for the busy moments, such as progress ticking while playing). */
     suspend fun flush() = withContext(Dispatchers.IO + NonCancellable) {
         atomicWrite(subscriptionsFile, ThumperJson.encodeToString(ListSerializer(Feed.serializer()), _feeds.value))
-        atomicWrite(stateFile, ThumperJson.encodeToString(State.serializer(), State(_progress.value.values.toList(), _read.value.toList())))
+        atomicWrite(stateFile, ThumperJson.encodeToString(State.serializer(), State(_progress.value.values.toList(), _read.value.toList(), _queue.value)))
     }
 
     private fun atomicWrite(target: File, text: String) {

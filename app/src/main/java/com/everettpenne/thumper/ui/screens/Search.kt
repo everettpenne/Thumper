@@ -33,7 +33,7 @@ import kotlinx.coroutines.delay
 /** Whether what was typed is an address rather than a search: something with no spaces and a dot, or a feed:/http scheme. */
 internal fun looksLikeAddress(text: String): Boolean {
     val t = text.trim()
-    return t.isNotEmpty() && !t.contains(' ') && (t.startsWith("http://", true) || t.startsWith("https://", true) || t.startsWith("feed:", true) || t.startsWith("pcast:", true) || Regex("""^[\w-]+(\.[\w-]+)+(:\d+)?(/.*)?$""").matches(t))
+    return t.isNotEmpty() && !t.contains(' ') && (t.startsWith("http://", true) || t.startsWith("https://", true) || t.startsWith("feed:", true) || t.startsWith("pcast:", true) || Regex("""^[\w-]+(\.[\w-]+)+(:\d+)?(/.*)?$""").matches(t) || Regex("""^[\w-]+:\d{2,5}(/.*)?$""").matches(t))      // a host with a dot, or a bare host with a port (nas:8080/feed)
 }
 
 @Composable

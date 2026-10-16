@@ -17,6 +17,8 @@ class Settings(context: Context, private val secure: SecureStore) {
     private val _skipForward = MutableStateFlow(prefs.getInt("skipForward", 30))
     private val _speed = MutableStateFlow(prefs.getFloat("speed", 1f))
     private val _hasKeys = MutableStateFlow(keys() != null)
+    private val _wifiOnly = MutableStateFlow(prefs.getBoolean("wifiOnlyDownloads", true))
+    private val _deleteWhenPlayed = MutableStateFlow(prefs.getBoolean("deleteWhenPlayed", false))
 
     /** Which directory the Search tab asks. Apple's needs nothing; Podcast Index needs the key and secret below. */
     val directory: StateFlow<DirectoryChoice> = _directory.asStateFlow()
@@ -25,11 +27,18 @@ class Settings(context: Context, private val secure: SecureStore) {
     /** The speed new episodes start at (1.0 is normal). */
     val speed: StateFlow<Float> = _speed.asStateFlow()
     val hasPodcastIndexKeys: StateFlow<Boolean> = _hasKeys.asStateFlow()
+    /** Wait for Wi-Fi before downloading (on by default: episodes are big). */
+    val wifiOnlyDownloads: StateFlow<Boolean> = _wifiOnly.asStateFlow()
+    /** Delete a downloaded episode once it has been played. */
+    val deleteWhenPlayed: StateFlow<Boolean> = _deleteWhenPlayed.asStateFlow()
 
     fun setDirectory(v: DirectoryChoice) { _directory.value = v; prefs.edit().putString("directory", v.name).apply() }
     fun setSkipBack(v: Int) { _skipBack.value = v; prefs.edit().putInt("skipBack", v).apply() }
     fun setSkipForward(v: Int) { _skipForward.value = v; prefs.edit().putInt("skipForward", v).apply() }
     fun setSpeed(v: Float) { _speed.value = v; prefs.edit().putFloat("speed", v).apply() }
+
+    fun setWifiOnlyDownloads(v: Boolean) { _wifiOnly.value = v; prefs.edit().putBoolean("wifiOnlyDownloads", v).apply() }
+    fun setDeleteWhenPlayed(v: Boolean) { _deleteWhenPlayed.value = v; prefs.edit().putBoolean("deleteWhenPlayed", v).apply() }
 
     fun keys(): Pair<String, String>? {
         val k = secure.get("pi_key"); val s = secure.get("pi_secret")

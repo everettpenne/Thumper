@@ -73,6 +73,8 @@ fun PlayerScreen(nav: Navigator, onBack: () -> Unit) {
                 }
                 SkipButton(true, forward, pb::skipForward)
             }
+            val upNext by graph.library.queue.collectAsState()
+            if (upNext.isNotEmpty()) GlassButton({ pb.next() }, Modifier.fillMaxWidth()) { Icon(Icons.Rounded.SkipNext, null); Text("Next: ${upNext.first().episode.title}", maxLines = 1, overflow = TextOverflow.Ellipsis) }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Box {
                     GlassChip(false, { speedMenu = true }) { ChipLabel(Icons.Rounded.Speed, Format.speed(pb.speed)) }
@@ -86,6 +88,8 @@ fun PlayerScreen(nav: Navigator, onBack: () -> Unit) {
                         GlassMenuItem("End of episode", { pb.sleep(endOfEpisode = true); sleepMenu = false })
                     }
                 }
+                val queued by graph.library.queue.collectAsState()
+                if (queued.isNotEmpty()) GlassChip(false, { nav.openQueue() }) { ChipLabel(Icons.Rounded.QueueMusic, "Up Next ${queued.size}") }
                 val ep = pb.episodeId; val fid = pb.feedId
                 if (ep != null && fid != null) GlassChip(false, { nav.openEpisode(fid, ep) }) { ChipLabel(Icons.Rounded.Notes, "Notes") }
             }

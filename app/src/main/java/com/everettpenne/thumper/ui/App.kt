@@ -43,7 +43,7 @@ import com.kyant.backdrop.backdrops.layerBackdrop
 import kotlinx.coroutines.launch
 
 object Routes {
-    const val LISTEN = "listen"; const val READ = "read"; const val SEARCH = "search"; const val SETTINGS = "settings"; const val PLAYER = "player"
+    const val LISTEN = "listen"; const val READ = "read"; const val SEARCH = "search"; const val SETTINGS = "settings"; const val PLAYER = "player"; const val QUEUE = "queue"; const val DOWNLOADS = "downloads"
     fun feed(url: String) = "feed/${Uri.encode(url)}"
     fun episode(feedId: String, episodeId: String) = "episode/$feedId/$episodeId"
     fun article(feedId: String, articleId: String) = "article/$feedId/$articleId"
@@ -65,6 +65,8 @@ fun ThumperRoot(deepLink: Uri?) {
                 override fun openEpisode(feedId: String, episodeId: String) = navController.navigate(Routes.episode(feedId, episodeId))
                 override fun openArticle(feedId: String, articleId: String) = navController.navigate(Routes.article(feedId, articleId))
                 override fun openPlayer() = navController.navigate(Routes.PLAYER) { launchSingleTop = true }
+                override fun openQueue() = navController.navigate(Routes.QUEUE) { launchSingleTop = true }
+                override fun openDownloads() = navController.navigate(Routes.DOWNLOADS) { launchSingleTop = true }
                 override fun openSettings() = navController.navigate(Routes.SETTINGS) { launchSingleTop = true }
                 override fun addFeed(url: String?) { addFeed = url ?: "" }
                 override fun openSearch() { navController.navigate(Routes.SEARCH) { popUpTo(Routes.LISTEN) { inclusive = false }; launchSingleTop = true } }
@@ -104,7 +106,9 @@ fun ThumperRoot(deepLink: Uri?) {
                         composable(Routes.LISTEN) { ListenScreen(nav) }
                         composable(Routes.READ) { ReadScreen(nav) }
                         composable(Routes.SEARCH) { SearchScreen(nav) }
-                        composable(Routes.SETTINGS) { SettingsScreen(onBack = { navController.popBackStack() }) }
+                        composable(Routes.QUEUE) { QueueScreen(nav, onBack = { navController.popBackStack() }) }
+                        composable(Routes.SETTINGS) { SettingsScreen(nav, onBack = { navController.popBackStack() }) }
+                        composable(Routes.DOWNLOADS) { DownloadsScreen(nav, onBack = { navController.popBackStack() }) }
                         composable(Routes.PLAYER, enterTransition = { slideInVertically { it / 3 } + fadeIn() }, popExitTransition = { slideOutVertically { it / 3 } + fadeOut() }) { PlayerScreen(nav, onBack = { navController.popBackStack() }) }
                         composable("feed/{url}", listOf(navArgument("url") { type = NavType.StringType })) { e -> FeedScreen(e.arguments?.getString("url").orEmpty(), nav, onBack = { navController.popBackStack() }) }
                         composable("episode/{feedId}/{episodeId}", listOf(navArgument("feedId") { type = NavType.StringType }, navArgument("episodeId") { type = NavType.StringType })) { e ->

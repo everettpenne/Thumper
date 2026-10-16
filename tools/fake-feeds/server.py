@@ -9,10 +9,14 @@ from urllib.parse import urlparse, parse_qs
 from PIL import Image, ImageDraw
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-AUDIO = os.path.join(HERE, "episode.mp3")
+AUDIO = os.path.join(HERE, "episode.mp3")          # 5 minutes: episodes 3 and 4
+SHORT = os.path.join(HERE, "short.mp3")            # 6 seconds: episodes 1 and 2, so a test can watch one end and the next begin
+AUDIO_REQUESTS = []
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8097
 
 def make_audio():
+    if not os.path.exists(SHORT):
+        subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "lavfi", "-i", "sine=frequency=520:duration=6", "-c:a", "libmp3lame", "-b:a", "48k", SHORT], check=True)
     if not os.path.exists(AUDIO):
         subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "lavfi", "-i", "sine=frequency=330:duration=300", "-c:a", "libmp3lame", "-b:a", "48k", AUDIO], check=True)
 
@@ -65,14 +69,15 @@ class H(BaseHTTPRequestHandler):
         if p.startswith("/blog/"): return self.send(200, "<html><body>post</body></html>", "text/html")
         m = re.match(r"/art/(.+)\.jpg", p)
         if m: return self.send(200, art(m[1]), "image/jpeg")
-        if p.startswith("/audio/"): return self.audio()
+        if p == "/admin/audio-requests": return self.send(200, {"count": len(AUDIO_REQUESTS), "paths": AUDIO_REQUESTS})
+        if p.startswith("/audio/"): AUDIO_REQUESTS.append(p); return self.audio(SHORT if re.match(r"/audio/ep[12]\.mp3", p) else AUDIO)
         return self.send(404)
-    def audio(self):
-        size = os.path.getsize(AUDIO); rng = self.headers.get("Range"); start, end = 0, size - 1
+    def audio(self, path):
+        size = os.path.getsize(path); rng = self.headers.get("Range"); start, end = 0, size - 1
         if rng and (m := re.match(r"bytes=(\d*)-(\d*)", rng)):
             if m[1]: start = int(m[1])
             if m[2]: end = int(m[2])
-        with open(AUDIO, "rb") as f: f.seek(start); data = f.read(end - start + 1)
+        with open(path, "rb") as f: f.seek(start); data = f.read(end - start + 1)
         extra = {"Accept-Ranges": "bytes"}
         if rng: extra["Content-Range"] = f"bytes {start}-{end}/{size}"
         self.send(206 if rng else 200, data, "audio/mpeg", extra)

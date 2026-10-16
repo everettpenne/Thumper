@@ -26,7 +26,7 @@ import kotlinx.coroutines.delay
  * playing item's own metadata, so after the app is reopened with something still playing it picks that up.
  */
 @Stable
-class PlaybackUi(private val library: Library, private val settings: Settings) {
+class PlaybackUi(private val library: Library, private val settings: Settings, private val local: () -> LocalFiles?) {
     var controller by mutableStateOf<MediaController?>(null); internal set
     var episodeId by mutableStateOf<String?>(null); private set
     var feedId by mutableStateOf<String?>(null); private set
@@ -69,16 +69,14 @@ class PlaybackUi(private val library: Library, private val settings: Settings) {
         if (c.currentMediaItem?.mediaId == episode.id) { if (!c.isPlaying) c.play(); return }
         val saved = library.progress(episode.id)
         val start = saved?.takeIf { !it.played && it.durationMs > 0 && it.positionMs < it.durationMs - 10_000 }?.positionMs ?: 0L
-        val url = episode.audioUrl
-        val metadata = MediaMetadata.Builder().setTitle(episode.title).setArtist(feed.title).setAlbumTitle(feed.title)
-            .setArtworkUri((episode.imageUrl ?: feed.imageUrl)?.let { Uri.parse(it) })
-            .setExtras(Bundle().apply { putString(KEY_FEED, feed.id) }).build()
-        c.setMediaItem(MediaItem.Builder().setMediaId(episode.id).setUri(url).setMediaMetadata(metadata)
-            .setRequestMetadata(MediaItem.RequestMetadata.Builder().setMediaUri(Uri.parse(url)).build()).build(), start)
+        library.dequeue(episode.id)                                   // playing it now: it is no longer "up next"
+        c.setMediaItem(EpisodeMedia.item(episode, feed, local()), start)
         c.setPlaybackSpeed(settings.speed.value)
         c.prepare(); c.play()
     }
 
+    /** Skips to the next queued episode (the notification's and a headset's "next" do the same). */
+    fun next() { controller?.seekToNextMediaItem() }
     fun toggle() { controller?.let { if (it.isPlaying) it.pause() else it.play() } }
     fun skipBack() { controller?.seekBack(); tick() }
     fun skipForward() { controller?.seekForward(); tick() }
@@ -92,7 +90,7 @@ class PlaybackUi(private val library: Library, private val settings: Settings) {
         sleepLabel = when { endOfEpisode -> "End of episode"; minutes > 0 -> "$minutes min"; else -> null }
     }
 
-    companion object { const val KEY_FEED = "thumper.feed" }
+    companion object { const val KEY_FEED = EpisodeMedia.KEY_FEED }
 }
 
 val LocalPlayback = staticCompositionLocalOf<PlaybackUi> { error("no PlaybackUi provided") }
@@ -102,7 +100,7 @@ val LocalPlayback = staticCompositionLocalOf<PlaybackUi> { error("no PlaybackUi 
 fun rememberPlaybackUi(): PlaybackUi {
     val context = LocalContext.current
     val graph = context.graph
-    val ui = remember { PlaybackUi(graph.library, graph.settings) }
+    val ui = remember { PlaybackUi(graph.library, graph.settings) { graph.localFiles } }
     DisposableEffect(Unit) {
         val future = MediaController.Builder(context, SessionToken(context, ComponentName(context, PlaybackService::class.java))).buildAsync()
         future.addListener({ runCatching { future.get() }.getOrNull()?.let(ui::attach) }, ContextCompat.getMainExecutor(context))

@@ -6,9 +6,11 @@ A podcast player and feed reader for Android, with iOS-style liquid glass, in th
 - **Read:** your blogs and news feeds as one list, newest first, with unread dots, filter by feed, and a clean reader with links, lists and pictures.
 - **Search:** find podcasts in [Apple's directory](https://performance-partners.apple.com/search-api) (no sign-up) or in [Podcast Index](https://podcastindex.org/) (open and independent; needs a free key and secret), or paste any feed's address, or a blog's home page: Thumper finds its feed.
 - **Player:** background listening with a notification, skip back and forward (you choose the seconds), speed from 0.8× to 3×, a sleep timer (minutes or end of episode), and it remembers where you were in every episode.
+- **Up Next:** queue episodes from any episode's ••• menu (Play Next, or add to the end), reorder them, and the next one starts by itself when one ends, even with the app closed. The notification's and a headset's "next" skip to it.
+- **Downloads:** save episodes to listen without a connection, from the ••• menu or an episode's page. Optionally Wi-Fi only, delete after playing, and per-show "Download New Episodes". A Downloads screen shows what is coming down, what is on the phone and how much space it takes. Downloaded episodes play from the file, with no network at all.
 - **Yours:** subscriptions live on the phone. Import and export them as OPML, which every other podcast app and feed reader understands.
 
-Not yet: downloads for offline listening, episode queue, chapters, background refresh with notifications, CarPlay/Auto.
+Not yet: chapters, background refresh with new-episode notifications, drag-to-reorder in Up Next (it has Move Up/Down/Top today), Android Auto.
 
 ## Where your data goes
 
@@ -28,10 +30,13 @@ Release signing comes from the environment (`THUMPER_RELEASE_STORE_FILE`, `_STOR
 `tools/fake-feeds/server.py` is a stand-in for the outside world (needs ffmpeg and Pillow once): Apple-shaped search and charts, a podcast feed with a real MP3, an Atom blog, and a web page that advertises its feed.
 
 ```bash
-python3 tools/fake-feeds/server.py      # the emulator reaches it at http://10.0.2.2:8097
+python3 tools/fake-feeds/server.py      # serves on :8097
+adb reverse tcp:8097 tcp:8097           # the emulator then reaches it at http://localhost:8097
 ```
 
-`FlowAgainstFakeFeedsTest` (instrumented) drives it: find a show, subscribe, listen, background playback and resuming, adding a blog by its web address, reading it, and Settings. `RealNetworkTest` does the same against Apple's real directory and a real show, and needs the emulator to have internet.
+(`localhost` rather than the emulator's usual `10.0.2.2`: Android's DownloadManager is a separate system process that can't reach `10.0.2.2`.)
+
+`FlowAgainstFakeFeedsTest` (instrumented) drives it: find a show, subscribe, listen, background playback and resuming, Up Next playing in order and advancing by itself, reordering, downloading an episode and playing it with no network, adding a blog by its web address, reading it, and Settings. `RealNetworkTest` does the same against Apple's real directory and a real show, and needs the emulator to have internet.
 
 ## Credits
 

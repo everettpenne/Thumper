@@ -73,6 +73,16 @@ fun FeedScreen(url: String, nav: Navigator, onBack: () -> Unit) {
                         }
                         if (subscribed) GlassButton({ confirmUnsubscribe = true }, Modifier.fillMaxWidth()) { Icon(Icons.Rounded.Check, null); Text("Subscribed") }
                         else GlassButton({ library.subscribe(c) }, Modifier.fillMaxWidth(), prominent = true) { Icon(Icons.Rounded.Add, null); Text("Subscribe") }
+                        if (subscribed && c.feed.kind == FeedKind.PODCAST) {
+                            val auto = feeds.firstOrNull { it.id == id }?.autoDownload == true
+                            Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Column(Modifier.weight(1f)) {
+                                    Text("Download New Episodes", style = MaterialTheme.typography.bodyLarge)
+                                    Text("When the app refreshes and finds one, it's saved for offline listening", style = IosType.caption1, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                                LiquidSwitch(auto, { library.setAutoDownload(id, it) })
+                            }
+                        }
                         val about = remember(c.feed.id) { Html.plain(c.feed.description) }
                         if (about.isNotEmpty()) Text(about, style = MaterialTheme.typography.bodyMedium, maxLines = if (expanded) Int.MAX_VALUE else 4, overflow = TextOverflow.Ellipsis, modifier = Modifier.clickable { expanded = !expanded })
                     }

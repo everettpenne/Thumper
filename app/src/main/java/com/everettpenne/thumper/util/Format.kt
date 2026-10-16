@@ -39,5 +39,10 @@ object Format {
         return if (s >= 3600) "%d:%02d:%02d".format(s / 3600, s / 60 % 60, s % 60) else "%d:%02d".format(s / 60, s % 60)
     }
 
+    /** "812 KB", "42 MB", "1.3 GB". */
+    fun bytes(n: Long): String = when {
+        n >= 1L shl 30 -> "%.1f GB".format(n / (1024.0 * 1024 * 1024)); n >= 1L shl 20 -> "%.0f MB".format(n / (1024.0 * 1024)); n >= 1L shl 10 -> "%d KB".format(n shr 10); else -> "$n B"
+    }
+
     fun speed(v: Float): String = if (v == v.toInt().toFloat()) "${v.toInt()}×" else "${"%.2f".format(v).trimEnd('0')}×"
 }
