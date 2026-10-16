@@ -1,5 +1,6 @@
 package com.everettpenne.thumper.ui.screens
 
+import com.everettpenne.thumper.ui.glass.pressSwell
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -77,7 +78,7 @@ private fun QueueRow(entry: QueueEntry, index: Int, last: Int, nav: Navigator) {
             Text(listOf(Format.relativeDate(e.publishedAt), Format.duration(e.durationSec)).filter { it.isNotEmpty() }.joinToString("  ·  "), style = IosType.caption1, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Box {
-            Box(Modifier.size(40.dp).clip(CircleShape).clickable { menu = true }.semantics { contentDescription = "Options for ${e.title}" }, Alignment.Center) { Icon(Icons.Rounded.MoreVert, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) }
+            Box(Modifier.size(40.dp).clip(CircleShape).pressSwell().clickable(interactionSource = null, indication = null) { menu = true }.semantics { contentDescription = "Options for ${e.title}" }, Alignment.Center) { Icon(Icons.Rounded.MoreVert, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) }
             GlassDropdownMenu(menu, { menu = false }) {
                 GlassMenuItem("Play Now", { menu = false; playback.play(e, entry.feed) }, icon = Icons.Rounded.PlayArrow)
                 if (index > 0) GlassMenuItem("Move to Top", { menu = false; library.moveInQueue(index, 0) }, icon = Icons.Rounded.VerticalAlignTop)

@@ -1,5 +1,6 @@
 package com.everettpenne.thumper.ui.components
 
+import com.everettpenne.thumper.ui.glass.pressSwell
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -123,7 +124,7 @@ fun EpisodeMenuButton(episode: Episode, feed: Feed, modifier: Modifier = Modifie
     val queued = queue.any { it.episode.id == episode.id }
     val played = progress[episode.id]?.played == true
     Box(modifier) {
-        Box(Modifier.size(40.dp).clip(CircleShape).clickable { open = true }.semantics { contentDescription = "More for ${episode.title}" }, Alignment.Center) {
+        Box(Modifier.size(40.dp).clip(CircleShape).pressSwell().clickable(interactionSource = null, indication = null) { open = true }.semantics { contentDescription = "More for ${episode.title}" }, Alignment.Center) {
             Icon(Icons.Rounded.MoreHoriz, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         com.everettpenne.thumper.ui.glass.GlassDropdownMenu(open, { open = false }) {
@@ -177,7 +178,7 @@ fun MiniPlayer(onOpen: () -> Unit, modifier: Modifier = Modifier) {
 
 @Composable
 private fun MiniButton(icon: ImageVector, description: String, tint: Color, onClick: () -> Unit) {
-    Box(Modifier.size(48.dp).clip(CircleShape).clickable(onClick = onClick).semantics { contentDescription = description }, Alignment.Center) { Icon(icon, null, tint = tint, modifier = Modifier.size(28.dp)) }
+    Box(Modifier.size(48.dp).clip(CircleShape).pressSwell().clickable(interactionSource = null, indication = null, onClick = onClick).semantics { contentDescription = description }, Alignment.Center) { Icon(icon, null, tint = tint, modifier = Modifier.size(28.dp)) }
 }
 
 /** Show notes and article bodies: the blocks of [Html.blocks] drawn as text, with links you can tap, pictures, lists, quotes and code. */

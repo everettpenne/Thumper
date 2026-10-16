@@ -1,5 +1,6 @@
 package com.everettpenne.thumper.ui.screens
 
+import com.everettpenne.thumper.ui.glass.pressSwell
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -8,7 +9,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
+import com.everettpenne.thumper.ui.glass.GlassAlert
+import com.everettpenne.thumper.ui.glass.GlassProgressBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -63,14 +65,8 @@ fun DownloadsScreen(nav: Navigator, onBack: () -> Unit) {
                 }
             }
         }
-        if (confirmAll) GlassSheet({ confirmAll = false }) {
-            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                Text("Delete all downloads?", style = MaterialTheme.typography.titleLarge)
-                Text("This frees ${Format.bytes(total)}. The episodes stay in their shows and can be downloaded again.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                GlassButton("Delete All", { confirmAll = false; downloads.removeAll() }, Modifier.fillMaxWidth(), prominent = true)
-                GlassButton("Cancel", { confirmAll = false }, Modifier.fillMaxWidth())
-            }
-        }
+        if (confirmAll) GlassAlert("Delete all downloads?", "This frees ${Format.bytes(total)}. The episodes stay in their shows and can be downloaded again.", "Delete All",
+            { confirmAll = false; downloads.removeAll() }, { confirmAll = false }, destructive = true)
     }
 }
 
@@ -83,12 +79,12 @@ private fun ComingRow(r: DownloadRecord, info: DownloadInfo?, onCancel: () -> Un
             when (info?.status) {
                 DownloadStatus.FAILED -> Text("Download failed" + (info.problem?.let { ": $it" } ?: ""), style = IosType.caption1, color = Thumper.red)
                 else -> {
-                    LinearProgressIndicator(progress = { info?.fraction ?: 0f }, Modifier.fillMaxWidth(), color = Thumper.accent)
+                    GlassProgressBar(info?.fraction ?: 0f)
                     Text(info?.problem ?: (info?.fraction?.let { "${(it * 100).toInt()}%  ·  ${Format.bytes(info.bytes)} of ${Format.bytes(info.total)}" } ?: "Starting…"), style = IosType.caption1, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
         if (info?.status == DownloadStatus.FAILED) GlassButton("Retry", onRetry)
-        Box(Modifier.size(40.dp).clip(CircleShape).clickable(onClick = onCancel).semantics { contentDescription = "Cancel download of ${r.episode.title}" }, Alignment.Center) { Icon(Icons.Rounded.Close, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) }
+        Box(Modifier.size(40.dp).clip(CircleShape).pressSwell().clickable(interactionSource = null, indication = null, onClick = onCancel).semantics { contentDescription = "Cancel download of ${r.episode.title}" }, Alignment.Center) { Icon(Icons.Rounded.Close, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) }
     }
 }

@@ -1,5 +1,6 @@
 package com.everettpenne.thumper.ui.screens
 
+import com.everettpenne.thumper.ui.glass.GlassRefreshIndicator
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -46,7 +47,9 @@ fun ListenScreen(nav: Navigator) {
             GlassActionPill { PillIcon(Icons.Rounded.DownloadForOffline, "Downloads", nav::openDownloads); PillIcon(Icons.Rounded.Add, "Add a feed", { nav.addFeed() }); PillIcon(Icons.Rounded.Settings, "Settings", nav::openSettings) }
         }
     }) {
-        PullToRefreshBox(refreshing, { scope.launch { graph.refreshAll(force = true) } }, Modifier.fillMaxSize()) {
+        val pullState = androidx.compose.material3.pulltorefresh.rememberPullToRefreshState()
+        PullToRefreshBox(refreshing, { scope.launch { graph.refreshAll(force = true) } }, Modifier.fillMaxSize(), state = pullState,
+            indicator = { GlassRefreshIndicator(pullState, refreshing, topContentPadding()) }) {
             LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = topContentPadding() + 4.dp, bottom = bottomContentPadding()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (podcasts.isEmpty()) item { EmptyListen(nav) }
                 if (inProgress.isNotEmpty()) item {

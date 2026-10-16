@@ -1,5 +1,6 @@
 package com.everettpenne.thumper.ui.screens
 
+import com.everettpenne.thumper.ui.glass.GlassAlert
 import androidx.compose.material3.Icon
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -101,13 +102,7 @@ fun FeedScreen(url: String, nav: Navigator, onBack: () -> Unit) {
                 } else items(c.articles, key = { it.id }) { a -> ArticleRow(a, c.feed, a.id in read, { nav.openArticle(c.feed.id, a.id) }) }
             }
         }
-        if (confirmUnsubscribe) GlassSheet({ confirmUnsubscribe = false }) {
-            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                Text("Unsubscribe from ${content?.feed?.title.orEmpty()}?", style = MaterialTheme.typography.titleLarge)
-                Text("Its saved episodes are removed from this phone. Your listening history stays.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                GlassButton("Unsubscribe", { confirmUnsubscribe = false; content?.let { preview = it; graph.previews[id] = it }; library.unsubscribe(id) }, Modifier.fillMaxWidth(), prominent = true)
-                GlassButton("Cancel", { confirmUnsubscribe = false }, Modifier.fillMaxWidth())
-            }
-        }
+        if (confirmUnsubscribe) GlassAlert("Unsubscribe from ${content?.feed?.title.orEmpty()}?", "Its saved episodes are removed from this phone. Your listening history stays.", "Unsubscribe",
+            { confirmUnsubscribe = false; content?.let { preview = it; graph.previews[id] = it }; library.unsubscribe(id) }, { confirmUnsubscribe = false }, destructive = true)
     }
 }

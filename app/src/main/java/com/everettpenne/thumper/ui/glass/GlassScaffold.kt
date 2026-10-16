@@ -39,7 +39,7 @@ import com.everettpenne.thumper.ui.theme.Thumper
 fun GlassTopBar(title: String, modifier: Modifier = Modifier, subtitle: String? = null, onBack: (() -> Unit)? = null,
                 actions: @Composable RowScope.() -> Unit = {}) {
     val bg = MaterialTheme.colorScheme.background
-    Box(modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(bg.copy(alpha = .94f), bg.copy(alpha = .8f), Color.Transparent)))) {
+    Box(modifier.fillMaxWidth().progressiveBlur(fromTop = true, tint = bg)) {
         Row(Modifier.fillMaxWidth().statusBarsPadding().padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 14.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             if (onBack != null) GlassIconButton(Icons.AutoMirrored.Rounded.ArrowBack, "Back", onBack)
@@ -57,7 +57,7 @@ fun GlassTopBar(title: String, modifier: Modifier = Modifier, subtitle: String? 
 @Composable
 fun GlassCenteredTopBar(title: String, onBack: () -> Unit, modifier: Modifier = Modifier, subtitle: String? = null, trailing: @Composable () -> Unit = {}) {
     val bg = MaterialTheme.colorScheme.background
-    Box(modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(bg.copy(alpha = .94f), bg.copy(alpha = .8f), Color.Transparent)))) {
+    Box(modifier.fillMaxWidth().progressiveBlur(fromTop = true, tint = bg)) {
         Box(Modifier.fillMaxWidth().statusBarsPadding().padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 14.dp).heightIn(min = 44.dp)) {
             GlassIconButton(Icons.AutoMirrored.Rounded.ArrowBack, "Back", onBack, Modifier.align(Alignment.CenterStart))
             Column(Modifier.align(Alignment.Center).padding(horizontal = 56.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -103,29 +103,20 @@ enum class Tab(val route: String, val label: String, val icon: ImageVector) {
 @Composable
 fun GlassTabBar(selected: Tab?, onSelect: (Tab) -> Unit, modifier: Modifier = Modifier) {
     val ink = glassPalette().ink
-    val tint = ink.copy(alpha = .05f).compositeOver(glassPalette().tint)
+    val tabs = listOf(Tab.Listen, Tab.Read)
     Row(modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-        Row(Modifier.widthIn(max = 260.dp).weight(1f, fill = false).height(64.dp)
-            .glassSurface(RoundedCornerShape(percent = 50), tint = tint, blurRadius = 8f, lensHeight = 24f, lensAmount = 32f).padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
-            listOf(Tab.Listen, Tab.Read).forEach { tab ->
-                val press = rememberGlassPress()
+        LiquidTabs(selectedIndex = tabs.indexOf(selected).coerceAtLeast(0), onTabSelected = { onSelect(tabs[it]) }, tabsCount = tabs.size,
+            indicatorVisible = selected != null && selected != Tab.Search, modifier = Modifier.widthIn(max = 260.dp).weight(1f, fill = false)) {
+            tabs.forEach { tab ->
                 val on = tab == selected
-                Column(Modifier.weight(1f).fillMaxHeight().widthIn(min = 96.dp)
-                    .then(if (on) Modifier.clip(RoundedCornerShape(percent = 50)).background(ink.copy(alpha = .10f)) else Modifier)
-                    .graphicsLayer { with(press) { swell() } }.then(press.light).then(press.watcher)
-                    .clickable(interactionSource = null, indication = null, role = Role.Tab) { onSelect(tab) }.semantics { contentDescription = tab.label },
-                    horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                LiquidTab({ onSelect(tab) }, Modifier.semantics { contentDescription = tab.label }) {
                     Icon(tab.icon, null, tint = if (on) Thumper.accent else ink, modifier = Modifier.size(26.dp))
                     Text(tab.label, style = com.everettpenne.thumper.ui.theme.IosType.caption1.copy(fontWeight = FontWeight.SemiBold), color = if (on) Thumper.accent else ink)
                 }
             }
         }
         Spacer(Modifier.weight(1f))
-        val press = rememberGlassPress()
-        Box(Modifier.size(64.dp).glassSurface(CircleShape, tint = tint, blurRadius = 8f, lensHeight = 22f, lensAmount = 32f)
-            .graphicsLayer { with(press) { swell() } }.then(press.light).then(press.watcher)
-            .clickable(interactionSource = null, indication = null, role = Role.Tab) { onSelect(Tab.Search) }.semantics { contentDescription = Tab.Search.label },
-            contentAlignment = Alignment.Center) {
+        GlassCircleButton({ onSelect(Tab.Search) }, size = 64.dp, description = Tab.Search.label) {
             Icon(Icons.Rounded.Search, null, tint = if (selected == Tab.Search) Thumper.accent else ink, modifier = Modifier.size(30.dp))
         }
     }

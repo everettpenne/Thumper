@@ -61,7 +61,7 @@ import kotlinx.coroutines.launch
  * button); [surface] is a plain wash for the resting look. Without glass in scope it is a flat translucent fill.
  */
 @Composable
-private fun Modifier.glassControl(shape: androidx.compose.ui.graphics.Shape, press: GlassPressState, tint: Color?, surface: Color?,
+internal fun Modifier.glassControl(shape: androidx.compose.ui.graphics.Shape, press: GlassPressState, tint: Color?, surface: Color?,
                                   lensHeight: Float, lensAmount: Float, shadowed: Boolean): Modifier {
     val backdrop = LocalGlassBackdrop.current
     if (backdrop == null) {
@@ -82,14 +82,14 @@ private fun Modifier.glassControl(shape: androidx.compose.ui.graphics.Shape, pre
 
 /** A pill action. [prominent] fills it with the accent (use for the one main action). */
 @Composable
-fun GlassButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, prominent: Boolean = false,
+fun GlassButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, prominent: Boolean = false, accent: Color = Thumper.accent,
                 content: @Composable RowScope.() -> Unit) {
     val ink = glassPalette().ink
     val press = rememberGlassPress()
     val shape = RoundedCornerShape(percent = 50)
     val content_ = (if (prominent) Color.White else ink).copy(alpha = if (enabled) 1f else .45f)
     Row(modifier.heightIn(min = 46.dp)
-        .glassControl(shape, press, tint = if (prominent) Thumper.accent.copy(alpha = if (enabled) 1f else .45f) else null,
+        .glassControl(shape, press, tint = if (prominent) accent.copy(alpha = if (enabled) 1f else .45f) else null,
             surface = if (prominent) null else ink.copy(alpha = if (enabled) .10f else .05f), lensHeight = 10f, lensAmount = 20f, shadowed = true)
         .clickable(interactionSource = null, indication = null, enabled = enabled, role = Role.Button, onClick = onClick).padding(horizontal = 18.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally), verticalAlignment = Alignment.CenterVertically) {

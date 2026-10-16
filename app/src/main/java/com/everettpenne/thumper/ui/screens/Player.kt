@@ -1,5 +1,8 @@
 package com.everettpenne.thumper.ui.screens
 
+import com.everettpenne.thumper.ui.glass.pressSwell
+import com.everettpenne.thumper.ui.glass.GlassSlider
+import com.everettpenne.thumper.ui.glass.GlassCircleButton
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -58,9 +61,8 @@ fun PlayerScreen(nav: Navigator, onBack: () -> Unit) {
                     graph.library.feeds.value.firstOrNull { it.id == pb.feedId }?.let { nav.openFeed(it.url) } })
             }
             Column(Modifier.fillMaxWidth()) {
-                Slider(value = scrub ?: (pb.positionMs.toFloat() / duration).coerceIn(0f, 1f), onValueChange = { scrub = it },
-                    onValueChangeFinished = { scrub?.let { pb.seekTo((it * duration).toLong()) }; scrub = null }, modifier = Modifier.semantics { contentDescription = "Seek" },
-                    colors = SliderDefaults.colors(thumbColor = Thumper.accent, activeTrackColor = Thumper.accent))
+GlassSlider(value = scrub ?: (pb.positionMs.toFloat() / duration).coerceIn(0f, 1f), onValueChange = { scrub = it },
+                    onValueChangeFinished = { scrub?.let { pb.seekTo((it * duration).toLong()) }; scrub = null }, description = "Seek")
                 Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp)) {
                     Text(Format.clock(shown), style = IosType.caption1, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.weight(1f)); Text("-" + Format.clock(pb.durationMs - shown), style = IosType.caption1, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -68,7 +70,7 @@ fun PlayerScreen(nav: Navigator, onBack: () -> Unit) {
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
                 SkipButton(false, back, pb::skipBack)
-                Box(Modifier.size(76.dp).clip(CircleShape).clickable(onClick = pb::toggle).background(Thumper.accent).semantics { contentDescription = if (pb.isPlaying) "Pause" else "Play" }, Alignment.Center) {
+                GlassCircleButton(pb::toggle, size = 76.dp, tint = Thumper.accent, description = if (pb.isPlaying) "Pause" else "Play") {
                     Icon(if (pb.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, null, tint = androidx.compose.ui.graphics.Color.White, modifier = Modifier.size(44.dp))
                 }
                 SkipButton(true, forward, pb::skipForward)
@@ -100,7 +102,7 @@ fun PlayerScreen(nav: Navigator, onBack: () -> Unit) {
 /** Skip back or forward by the number of seconds chosen in Settings: a curved arrow with the number in it. */
 @Composable
 private fun SkipButton(forward: Boolean, seconds: Int, onClick: () -> Unit) {
-    Box(Modifier.size(64.dp).clip(CircleShape).clickable(onClick = onClick).semantics { contentDescription = (if (forward) "Skip forward " else "Skip back ") + "$seconds seconds" }, Alignment.Center) {
+    Box(Modifier.size(64.dp).clip(CircleShape).pressSwell().clickable(interactionSource = null, indication = null, onClick = onClick).semantics { contentDescription = (if (forward) "Skip forward " else "Skip back ") + "$seconds seconds" }, Alignment.Center) {
         Icon(Icons.Rounded.Replay, null, Modifier.size(52.dp).graphicsLayer { scaleX = if (forward) -1f else 1f }, tint = glassPalette().ink)
         Text("$seconds", style = IosType.caption1.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold), color = glassPalette().ink, modifier = Modifier.padding(top = 3.dp))
     }

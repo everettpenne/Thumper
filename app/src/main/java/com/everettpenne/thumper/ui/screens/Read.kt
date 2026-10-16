@@ -1,5 +1,6 @@
 package com.everettpenne.thumper.ui.screens
 
+import com.everettpenne.thumper.ui.glass.GlassRefreshIndicator
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -74,7 +75,9 @@ fun ReadScreen(nav: Navigator) {
             }
         }
     }) {
-        PullToRefreshBox(refreshing, { scope.launch { graph.refreshAll(force = true) } }, Modifier.fillMaxSize()) {
+        val pullState = androidx.compose.material3.pulltorefresh.rememberPullToRefreshState()
+        PullToRefreshBox(refreshing, { scope.launch { graph.refreshAll(force = true) } }, Modifier.fillMaxSize(), state = pullState,
+            indicator = { GlassRefreshIndicator(pullState, refreshing, topContentPadding()) }) {
             LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = topContentPadding() + 4.dp, bottom = bottomContentPadding())) {
                 if (readingFeeds.size > 1) item {
                     LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
