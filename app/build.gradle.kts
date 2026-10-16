@@ -56,6 +56,8 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     // Liquid glass UI kit (components, theme, type): ../Glass, via includeBuild.
     implementation("com.everettpenne:glass")
+    // In-app updates from GitHub releases: also ../Glass.
+    implementation("com.everettpenne:updater")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")

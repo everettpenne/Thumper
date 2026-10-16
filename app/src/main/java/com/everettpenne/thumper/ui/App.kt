@@ -52,6 +52,10 @@ object Routes {
 @Composable
 fun ThumperRoot(deepLink: Uri?) {
     ThumperTheme {
+        val updater = com.everettpenne.updater.Updater.get(LocalContext.current, com.everettpenne.updater.UpdateConfig("everettpenne/Thumper", com.everettpenne.thumper.BuildConfig.VERSION_NAME))
+        // Debug builds skip the launch check so the emulator tests never meet a dialog; Settings > Check for Updates still works there.
+        LaunchedEffect(Unit) { if (!com.everettpenne.thumper.BuildConfig.DEBUG) updater.checkOnLaunch() }
+        com.everettpenne.updater.UpdateDialog(updater, "Thumper")
         val context = LocalContext.current
         val graph = context.graph
         val navController = rememberNavController()
@@ -94,7 +98,7 @@ fun ThumperRoot(deepLink: Uri?) {
             }
         })
 
-        CompositionLocalProvider(LocalTabBar provides tabBar, LocalPlayback provides playback) {
+        CompositionLocalProvider(com.everettpenne.updater.LocalUpdater provides updater, LocalTabBar provides tabBar, LocalPlayback provides playback) {
             // The plain page colour is also a glass backdrop, recorded in a sibling of the screens: recording the screens themselves would make any glass
             // control inside them sample a layer that contains it, which sends the renderer into endless recursion.
             val pageBackdrop = com.kyant.backdrop.backdrops.rememberLayerBackdrop()

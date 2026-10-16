@@ -1,5 +1,6 @@
 package com.everettpenne.thumper.ui.screens
 
+import com.everettpenne.updater.collectStatus
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -117,6 +118,7 @@ fun SettingsScreen(nav: Navigator, onBack: () -> Unit) {
                 }
             }
             Group("About") {
+                com.everettpenne.updater.LocalUpdater.current?.let { u -> NavRow(androidx.compose.material.icons.Icons.Rounded.SystemUpdate, "Check for Updates", u.collectStatus()) { u.onSettingsRowClick() } }
                 Info(Icons.Rounded.Info, "Thumper ${BuildConfig.VERSION_NAME}", "A podcast player and feed reader with iOS-style liquid glass")
                 Info(Icons.Rounded.Lock, "Private by design", "No account, no analytics, no tracking. Your subscriptions and listening history stay on this phone.")
             }
