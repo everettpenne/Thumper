@@ -1,0 +1,23 @@
+*.iml
+.gradle/
+/local.properties
+/.idea/
+.DS_Store
+/build/
+/app/build/
+/captures/
+*.apk
+*.aab
+*.keystore
+*.jks
+
+# Made by tools/fake-jellyfin/server.py on first run
+tools/fake-jellyfin/test.mp4
+tools/fake-jellyfin/test.srt
+__pycache__/
+dist/
+tools/fake-jellyfin/dts.mkv
+tools/fake-jellyfin/hls/
+tools/fake-feeds/episode.mp3
+__pycache__/
+dist/

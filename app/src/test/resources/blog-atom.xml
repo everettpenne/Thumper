@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:media="http://search.yahoo.com/mrss/">
+  <title>The Sand Report</title>
+  <subtitle>Notes from the desert</subtitle>
+  <link rel="self" href="https://sand.example/atom.xml"/>
+  <link rel="alternate" href="https://sand.example/"/>
+  <logo>/logo.png</logo>
+  <author><name>Liet Kynes</name></author>
+  <entry>
+    <title>Water &amp; discipline</title>
+    <link rel="alternate" href="/posts/water"/>
+    <id>tag:sand.example,2026:water</id>
+    <published>2026-10-01T08:30:00+02:00</published>
+    <updated>2026-10-02T09:00:00Z</updated>
+    <author><name>Stilgar</name></author>
+    <content type="html">&lt;p&gt;Every drop &lt;b&gt;counts&lt;/b&gt;.&lt;/p&gt;&lt;img src="/img/water.jpg" alt="a stillsuit"/&gt;</content>
+    <media:thumbnail url="https://sand.example/thumb/water.jpg"/>
+  </entry>
+  <entry>
+    <title>No date, no content</title>
+    <link href="https://sand.example/posts/plain"/>
+    <id>plain</id>
+    <summary>Just a summary.</summary>
+  </entry>
+</feed>
