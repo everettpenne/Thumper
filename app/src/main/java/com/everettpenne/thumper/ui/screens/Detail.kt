@@ -44,7 +44,7 @@ fun EpisodeScreen(feedId: String, episodeId: String, nav: Navigator, onBack: () 
         val current = playback.episodeId == episode.id
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = topContentPadding(), bottom = bottomContentPadding(), start = 20.dp, end = 20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.Bottom) {
-                Artwork(episode.imageUrl ?: feed.imageUrl, 104.dp, radius = 18.dp)
+                Artwork(episode.imageUrl ?: feed.imageUrl, 104.dp, radius = 18.dp, zoomable = true)
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     Text(episode.title, style = MaterialTheme.typography.titleLarge, maxLines = 4, overflow = TextOverflow.Ellipsis)
                     Text(feed.title, style = MaterialTheme.typography.bodyMedium, color = com.everettpenne.thumper.ui.theme.Thumper.accent, maxLines = 1, modifier = Modifier.clickable { nav.openFeed(feed.url) })
@@ -94,8 +94,9 @@ fun ArticleScreen(feedId: String, articleId: String, onBack: () -> Unit) {
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = topContentPadding(), bottom = bottomContentPadding(), start = 20.dp, end = 20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Text(article.title, style = MaterialTheme.typography.headlineSmall)
             Text(listOf(content.feed.title, article.author.takeIf { it.isNotEmpty() }, Format.relativeDate(article.publishedAt).takeIf { it.isNotEmpty() }).filterNotNull().joinToString("  ·  "), style = IosType.caption1, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            val openImages = com.everettpenne.media.LocalImageViewer.current
             // the lead picture, unless the text already opens with it
-            if (article.imageUrl != null && !body.contains(article.imageUrl)) AsyncImage(article.imageUrl, null, Modifier.fillMaxWidth().clip(androidx.compose.foundation.shape.RoundedCornerShape(14.dp)), contentScale = ContentScale.FillWidth)
+            if (article.imageUrl != null && !body.contains(article.imageUrl)) AsyncImage(article.imageUrl, null, Modifier.fillMaxWidth().clip(androidx.compose.foundation.shape.RoundedCornerShape(14.dp)).clickable { openImages(listOf(article.imageUrl), 0) }, contentScale = ContentScale.FillWidth)
             if (body.isNotBlank()) RichText(body) else Text("This feed only sends the headline. Open the original to read it.", color = MaterialTheme.colorScheme.onSurfaceVariant)
             article.link?.let { link -> GlassButton({ uri.openUri(link) }, Modifier.fillMaxWidth()) { Icon(Icons.Rounded.OpenInBrowser, null); Text("Open original") } }
         }

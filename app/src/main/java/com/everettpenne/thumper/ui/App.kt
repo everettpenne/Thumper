@@ -52,6 +52,7 @@ object Routes {
 @Composable
 fun ThumperRoot(deepLink: Uri?) {
     ThumperTheme {
+        var viewer by remember { mutableStateOf<Pair<List<String>, Int>?>(null) }
         val updater = com.everettpenne.updater.Updater.get(LocalContext.current, com.everettpenne.updater.UpdateConfig("everettpenne/Thumper", com.everettpenne.thumper.BuildConfig.VERSION_NAME))
         // Debug builds skip the launch check so the emulator tests never meet a dialog; Settings > Check for Updates still works there.
         LaunchedEffect(Unit) { if (!com.everettpenne.thumper.BuildConfig.DEBUG) updater.checkOnLaunch() }
@@ -98,7 +99,7 @@ fun ThumperRoot(deepLink: Uri?) {
             }
         })
 
-        CompositionLocalProvider(com.everettpenne.updater.LocalUpdater provides updater, LocalTabBar provides tabBar, LocalPlayback provides playback) {
+        CompositionLocalProvider(com.everettpenne.updater.LocalUpdater provides updater, com.everettpenne.media.LocalImageViewer provides { urls, i -> viewer = urls to i }, LocalTabBar provides tabBar, LocalPlayback provides playback) {
             // The plain page colour is also a glass backdrop, recorded in a sibling of the screens: recording the screens themselves would make any glass
             // control inside them sample a layer that contains it, which sends the renderer into endless recursion.
             val pageBackdrop = com.kyant.backdrop.backdrops.rememberLayerBackdrop()
@@ -124,6 +125,7 @@ fun ThumperRoot(deepLink: Uri?) {
                     }
                 }
             }
+            viewer?.let { (urls, i) -> com.everettpenne.media.ImageViewer(urls, i) { viewer = null } }
             addFeed?.let { initial -> AddFeedSheet(initial, onDismiss = { addFeed = null }, onAdded = { url -> addFeed = null; openAfterAdd = url }) }
         }
     }

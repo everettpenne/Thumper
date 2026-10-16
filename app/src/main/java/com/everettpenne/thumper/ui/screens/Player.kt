@@ -31,6 +31,9 @@ import com.everettpenne.thumper.graph
 import com.everettpenne.thumper.playback.LocalPlayback
 import com.everettpenne.thumper.ui.components.*
 import com.everettpenne.glass.*
+import com.everettpenne.media.FullscreenVideo
+import com.everettpenne.media.VideoSurface
+import androidx.compose.foundation.shape.RoundedCornerShape
 import com.everettpenne.glass.IosType
 import com.everettpenne.thumper.ui.theme.Thumper
 import com.everettpenne.thumper.util.Format
@@ -45,6 +48,7 @@ fun PlayerScreen(nav: Navigator, onBack: () -> Unit) {
     val graph = LocalContext.current.graph
     val back by graph.settings.skipBackSeconds.collectAsState(); val forward by graph.settings.skipForwardSeconds.collectAsState()
     var scrub by remember { mutableStateOf<Float?>(null) }
+    var fullscreen by remember { mutableStateOf(false) }
     var speedMenu by remember { mutableStateOf(false) }; var sleepMenu by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { pb.tick() }
     val duration = pb.durationMs.coerceAtLeast(1)
@@ -54,7 +58,16 @@ fun PlayerScreen(nav: Navigator, onBack: () -> Unit) {
         if (!pb.hasEpisode) { EmptyState(Icons.Rounded.Headphones, "Nothing playing", "Start an episode and it will appear here."); return@GlassScreen }
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = topContentPadding() + 8.dp, bottom = 40.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding(), start = 24.dp, end = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(18.dp)) {
-            BoxWithConstraints(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { Artwork(pb.artworkUrl, minOf(maxWidth, 320.dp), radius = 24.dp) }
+            val video = pb.controller
+            if (pb.hasVideo && video != null) {
+                // a video podcast: the picture in place of the cover, with a button to take it full screen
+                Box(Modifier.fillMaxWidth().aspectRatio(pb.videoRatio.coerceIn(.6f, 2.4f)).clip(RoundedCornerShape(20.dp)).background(androidx.compose.ui.graphics.Color.Black)) {
+                    VideoSurface(video, Modifier.fillMaxSize(), enabled = !fullscreen)
+                    GlassCircleButton({ fullscreen = true }, Modifier.align(Alignment.BottomEnd).padding(10.dp).background(androidx.compose.ui.graphics.Color.Black.copy(alpha = .4f), CircleShape),
+                        size = 40.dp, description = "Full screen", shadowed = false) { Icon(Icons.Rounded.Fullscreen, null, tint = androidx.compose.ui.graphics.Color.White) }
+                }
+                if (fullscreen) FullscreenVideo(video, pb.title) { fullscreen = false }
+            } else BoxWithConstraints(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { Artwork(pb.artworkUrl, minOf(maxWidth, 320.dp), radius = 24.dp, zoomable = true) }
             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(pb.title, style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center, maxLines = 3, overflow = TextOverflow.Ellipsis)
                 Text(pb.showTitle, style = MaterialTheme.typography.bodyLarge, color = Thumper.accent, maxLines = 1, modifier = Modifier.clickable {

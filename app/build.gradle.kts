@@ -58,6 +58,8 @@ dependencies {
     implementation("com.everettpenne:glass")
     // In-app updates from GitHub releases: also ../Glass.
     implementation("com.everettpenne:updater")
+    // Image viewer and full-screen video: also ../Glass.
+    implementation("com.everettpenne:media")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")

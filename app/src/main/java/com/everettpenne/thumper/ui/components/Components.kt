@@ -1,5 +1,6 @@
 package com.everettpenne.thumper.ui.components
 
+import com.everettpenne.media.LocalImageViewer
 import com.everettpenne.glass.pressSwell
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -54,8 +55,10 @@ import com.everettpenne.thumper.util.Html
 
 /** Cover art from the web, with a quiet placeholder while it loads or when a show has none. */
 @Composable
-fun Artwork(url: String?, size: Dp, modifier: Modifier = Modifier, radius: Dp = 12.dp, placeholder: ImageVector = Icons.Rounded.Podcasts) {
-    Box(modifier.size(size).clip(RoundedCornerShape(radius)).background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) {
+fun Artwork(url: String?, size: Dp, modifier: Modifier = Modifier, radius: Dp = 12.dp, placeholder: ImageVector = Icons.Rounded.Podcasts, zoomable: Boolean = false) {
+    val openImages = LocalImageViewer.current
+    Box(modifier.size(size).clip(RoundedCornerShape(radius)).background(MaterialTheme.colorScheme.surfaceVariant)
+        .then(if (zoomable && url != null) Modifier.clickable { openImages(listOf(url), 0) } else Modifier), contentAlignment = Alignment.Center) {
         Icon(placeholder, null, tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = .35f), modifier = Modifier.size(size * .4f))
         if (url != null) AsyncImage(url, null, Modifier.matchParentSize(), contentScale = ContentScale.Crop)
     }
@@ -193,6 +196,8 @@ fun RichText(html: String, modifier: Modifier = Modifier) {
         }
     }
     Column(modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        val openImages = LocalImageViewer.current
+        val pictures = blocks.filterIsInstance<Html.Block.Image>().map { it.url }
         for (b in blocks) when (b) {
             is Html.Block.Paragraph -> Text(annotated(b.runs), style = MaterialTheme.typography.bodyLarge)
             is Html.Block.Heading -> Text(annotated(b.runs), style = if (b.level <= 2) MaterialTheme.typography.titleLarge else MaterialTheme.typography.titleMedium)
@@ -202,7 +207,7 @@ fun RichText(html: String, modifier: Modifier = Modifier) {
                 Text(annotated(b.runs), Modifier.padding(start = 12.dp), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .8f))
             }
             is Html.Block.Code -> Text(b.text, Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(10.dp)).padding(10.dp), style = IosType.footnote.copy(fontFamily = FontFamily.Monospace))
-            is Html.Block.Image -> AsyncImage(b.url, b.alt, Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)), contentScale = ContentScale.FillWidth)
+            is Html.Block.Image -> AsyncImage(b.url, b.alt, Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { openImages(pictures, pictures.indexOf(b.url).coerceAtLeast(0)) }, contentScale = ContentScale.FillWidth)
             Html.Block.Rule -> Box(Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.outlineVariant))
         }
     }

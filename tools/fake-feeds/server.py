@@ -11,6 +11,7 @@ from PIL import Image, ImageDraw
 HERE = os.path.dirname(os.path.abspath(__file__))
 AUDIO = os.path.join(HERE, "episode.mp3")          # 5 minutes: episodes 3 and 4
 SHORT = os.path.join(HERE, "short.mp3")            # 6 seconds: episodes 1 and 2, so a test can watch one end and the next begin
+VIDEO = os.path.join(HERE, "video.mp4")          # 2 minutes of test pattern with a tone: the video podcast
 AUDIO_REQUESTS = []
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8097
 
@@ -19,6 +20,17 @@ def make_audio():
         subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "lavfi", "-i", "sine=frequency=520:duration=6", "-c:a", "libmp3lame", "-b:a", "48k", SHORT], check=True)
     if not os.path.exists(AUDIO):
         subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "lavfi", "-i", "sine=frequency=330:duration=300", "-c:a", "libmp3lame", "-b:a", "48k", AUDIO], check=True)
+
+def make_video():
+    if not os.path.exists(VIDEO):
+        subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc2=size=640x360:rate=24:duration=120", "-f", "lavfi", "-i", "sine=frequency=440:duration=120",
+                        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-preset", "veryfast", "-c:a", "aac", "-b:a", "64k", "-movflags", "+faststart", VIDEO], check=True)
+
+def video_feed(host):
+    return f"""<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd"><channel><title>Fake Video Show</title><link>http://{host}/</link>
+<description>A video podcast.</description><itunes:author>Fake Host</itunes:author><itunes:image href="http://{host}/art/video.jpg"/>
+<item><title>Episode 1: Test Pattern</title><guid isPermaLink="false">fake-video-1</guid><pubDate>Wed, 14 Oct 2026 08:00:00 +0000</pubDate>
+<enclosure url="http://{host}/video/ep1.mp4" type="video/mp4" length="1000"/><itunes:duration>02:00</itunes:duration></item></channel></rss>"""
 
 def art(seed, size=600):
     hue = sum(map(ord, seed)) % 360
@@ -64,6 +76,8 @@ class H(BaseHTTPRequestHandler):
         if p.startswith("/api/v2/") and p.endswith("/podcasts.json"): return self.send(200, {"feed": {"results": [{"id": "2"}, {"id": "1"}]}})
         if p == "/lookup": return self.send(200, {"results": shows})
         if p == "/feeds/show.xml": return self.send(200, show_feed(host), "application/rss+xml", {"ETag": '"show-1"'})
+        if p == "/feeds/video.xml": return self.send(200, video_feed(host), "application/rss+xml")
+        if p.startswith("/video/"): return self.audio(VIDEO, "video/mp4")
         if p == "/feeds/blog.xml": return self.send(200, blog_feed(host), "application/atom+xml")
         if p == "/blog": return self.send(200, f'<html><head><title>Blog</title><link rel="alternate" type="application/atom+xml" href="/feeds/blog.xml"></head><body>hi</body></html>', "text/html")
         if p.startswith("/blog/"): return self.send(200, "<html><body>post</body></html>", "text/html")
@@ -72,7 +86,7 @@ class H(BaseHTTPRequestHandler):
         if p == "/admin/audio-requests": return self.send(200, {"count": len(AUDIO_REQUESTS), "paths": AUDIO_REQUESTS})
         if p.startswith("/audio/"): AUDIO_REQUESTS.append(p); return self.audio(SHORT if re.match(r"/audio/ep[12]\.mp3", p) else AUDIO)
         return self.send(404)
-    def audio(self, path):
+    def audio(self, path, ctype="audio/mpeg"):
         size = os.path.getsize(path); rng = self.headers.get("Range"); start, end = 0, size - 1
         if rng and (m := re.match(r"bytes=(\d*)-(\d*)", rng)):
             if m[1]: start = int(m[1])
@@ -80,8 +94,8 @@ class H(BaseHTTPRequestHandler):
         with open(path, "rb") as f: f.seek(start); data = f.read(end - start + 1)
         extra = {"Accept-Ranges": "bytes"}
         if rng: extra["Content-Range"] = f"bytes {start}-{end}/{size}"
-        self.send(206 if rng else 200, data, "audio/mpeg", extra)
+        self.send(206 if rng else 200, data, ctype, extra)
 
 if __name__ == "__main__":
-    make_audio(); print(f"Fake feeds on :{PORT}", flush=True)
+    make_audio(); make_video(); print(f"Fake feeds on :{PORT}", flush=True)
     ThreadingHTTPServer(("0.0.0.0", PORT), H).serve_forever()

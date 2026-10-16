@@ -39,6 +39,9 @@ class PlaybackUi(private val library: Library, private val settings: Settings, p
     var durationMs by mutableLongStateOf(0); private set
     var speed by mutableFloatStateOf(1f); private set
     var sleepLabel by mutableStateOf<String?>(null); private set
+    /** True while the playing item has a picture (a video podcast), with its width over height. */
+    var hasVideo by mutableStateOf(false); private set
+    var videoRatio by mutableFloatStateOf(16f / 9f); private set
 
     /** True when an episode is loaded (playing or paused): the mini player shows. */
     val hasEpisode: Boolean get() = episodeId != null
@@ -59,6 +62,7 @@ class PlaybackUi(private val library: Library, private val settings: Settings, p
         isPlaying = p.isPlaying; buffering = p.playbackState == Player.STATE_BUFFERING
         positionMs = p.currentPosition.coerceAtLeast(0); durationMs = p.duration.takeIf { it != C.TIME_UNSET && it > 0 } ?: durationMs
         speed = p.playbackParameters.speed
+        hasVideo = p.currentTracks.containsType(C.TRACK_TYPE_VIDEO); videoRatio = com.everettpenne.media.videoAspectRatio(p)
     }
 
     /** Called about once a second while something plays (and once when a screen that shows the clock opens). */

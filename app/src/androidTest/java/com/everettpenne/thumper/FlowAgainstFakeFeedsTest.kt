@@ -106,6 +106,21 @@ class FlowAgainstFakeFeedsTest {
         assertTrue(has("Third post"))
     }
 
+    @Test fun anArticlePictureOpensFullScreenAndCloses() {
+        tab("Read"); waitFor("Nothing to read yet")
+        rule.onAllNodes(hasText("Add a feed") and hasClickAction()).onFirst().performClick(); waitFor("Feed or website address")
+        rule.onNode(hasSetTextAction()).performTextInput("localhost:8097/blog")
+        rule.onAllNodes(hasText("Add") and hasClickAction()).onFirst().performClick()
+        waitFor("The Sand Report"); rule.onNodeWithContentDescription("Back").performClick()
+        tab("Read"); waitFor("Third post"); rule.onNodeWithText("Third post").performClick()
+        waitFor("Open original"); waitForDesc("pic")
+        rule.onNodeWithContentDescription("pic").performClick()
+        waitForDesc("Close"); shot("i1-image-viewer")
+        rule.onNodeWithContentDescription("Close").performClick()
+        rule.waitUntil(15_000) { !hasDesc("Close") }
+        assertTrue(has("Open original"))
+    }
+
     @Test fun searchingFindsShowsAndAddressesAreRecognised() {
         tab("Search"); waitFor("Fake Show")
         rule.onNode(hasSetTextAction()).performTextInput("sand")
@@ -121,6 +136,38 @@ class FlowAgainstFakeFeedsTest {
         rule.onNodeWithText("Podcast Index").performClick(); waitFor("API key"); waitFor("Get a key"); shot("10-settings-podcast-index")
         rule.onNodeWithText("Apple Podcasts").performClick()
         rule.waitUntil(10_000) { !has("API key") }
+    }
+
+    @Test fun aVideoPodcastShowsItsPictureAndGoesFullScreen() {
+        // a feed whose episode is video/mp4: the player shows the picture, with a way into full screen and back, and playback carries on throughout
+        rule.onNodeWithContentDescription("Add a feed").performClick()   // the + in the Listen bar
+        rule.waitUntil(15_000) { rule.onAllNodes(hasSetTextAction()).fetchSemanticsNodes().isNotEmpty() }
+        rule.onNode(hasSetTextAction()).performTextInput("localhost:8097/feeds/video.xml")
+        rule.onAllNodes(hasText("Add") and hasClickAction()).onFirst().performClick()
+        waitFor("Episode 1: Test Pattern")
+        rule.onAllNodesWithContentDescription("Play")[0].performClick()
+        rule.waitUntil(40_000) { rule.onAllNodesWithTag("mini-player").fetchSemanticsNodes().isNotEmpty() && hasDesc("Pause") }
+        rule.onNodeWithTag("mini-player").performClick(); waitFor("Now Playing")
+        waitForDesc("Full screen"); shot("v1-player-with-video")
+        rule.onNodeWithContentDescription("Full screen").performClick()
+        // from here no Compose node lookups: a playing video keeps the Compose test rule from ever being idle, so the phase is checked from outside
+        fun landscape() = context.resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+        rule.waitUntil(40_000) { landscape() }      // waitUntil is what lets Compose run frames in the test; a plain sleep would starve it
+        Thread.sleep(1200); device.takeScreenshot(File(dir, "v2-full-screen.png"))
+        assertTrue("landscape while full screen", landscape())
+        // the player's own clock, through a controller of the playback service: it must keep moving while the picture is full screen
+        val future = androidx.media3.session.MediaController.Builder(context, androidx.media3.session.SessionToken(context, android.content.ComponentName(context, com.everettpenne.thumper.playback.PlaybackService::class.java))).buildAsync()
+        val controller = future.get(20, java.util.concurrent.TimeUnit.SECONDS)
+        val first = runBlocking { kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { controller.currentPosition } }
+        Thread.sleep(2500)
+        val second = runBlocking { kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { controller.currentPosition } }
+        runBlocking { kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { androidx.media3.session.MediaController.releaseFuture(future) } }
+        assertTrue("video keeps playing full screen ($first -> $second)", second > first + 1500)
+        device.pressBack()      // Back leaves full screen
+        rule.waitUntil(40_000) { !landscape() }
+        rule.waitUntil(40_000) { hasDesc("Full screen") }
+        assertTrue("portrait again", context.resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_PORTRAIT)
+        device.takeScreenshot(File(dir, "v3-back-in-player.png"))
     }
 
     private fun more(episodeTitle: String) = rule.onNodeWithContentDescription("More for $episodeTitle")
