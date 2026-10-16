@@ -28,6 +28,7 @@ import com.everettpenne.thumper.data.api.Failure
 import com.everettpenne.thumper.ui.glass.GlassButton
 import com.everettpenne.thumper.ui.glass.glassPalette
 import com.everettpenne.thumper.ui.glass.glassSurface
+import com.everettpenne.thumper.ui.glass.frostedGlass
 
 /** Where a tap goes. Pure callbacks, so screens do not know about navigation. */
 interface Navigator {
@@ -102,8 +103,7 @@ fun GlassTextField(
         visualTransformation = if (password) PasswordVisualTransformation() else VisualTransformation.None,
         keyboardOptions = KeyboardOptions(imeAction = imeAction, keyboardType = if (password) KeyboardType.Password else keyboardType, autoCorrectEnabled = false),
         keyboardActions = KeyboardActions(onDone = { onSubmit() }, onSearch = { onSubmit() }, onGo = { onSubmit() }, onNext = { onSubmit() }),
-        modifier = modifier.fillMaxWidth().height(52.dp).glassSurface(androidx.compose.foundation.shape.RoundedCornerShape(percent = 50),
-            tint = ink.copy(alpha = .06f).compositeOver(glassPalette().tint), blurRadius = 6f, lensHeight = 10f, lensAmount = 20f, shadowed = false),
+        modifier = modifier.fillMaxWidth().height(52.dp).frostedGlass(androidx.compose.foundation.shape.RoundedCornerShape(percent = 50), lensHeight = 10f, lensAmount = 20f),
         decorationBox = { inner ->
             Row(Modifier.padding(horizontal = 18.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 if (leading != null) Icon(leading, null, tint = ink.copy(alpha = .6f), modifier = Modifier.size(20.dp))

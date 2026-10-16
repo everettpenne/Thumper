@@ -148,21 +148,19 @@ fun LiquidTabs(
             .graphicsLayer { translationX = if (isLtr) drag.value * tabWidth + panelOffset else size.width - (drag.value + 1f) * tabWidth + panelOffset }
             .then(if (indicatorVisible) Modifier.then(highlight.gestureModifier).then(drag.modifier) else Modifier)   // hidden: let taps reach the tab beneath
             .drawBackdrop(
+                // Unfrosted: no blur and no wash, only the lens, so the tab beneath is seen through a clear bead of glass. It is always lit and
+                // bent a little, and swells into the stronger lens when held.
                 backdrop = rememberCombinedBackdrop(backdrop, tabsBackdrop), shape = shape,
-                effects = { val p = drag.pressProgress; lens(10f.dp.toPx() * p, 14f.dp.toPx() * p, chromaticAberration = true) },
-                highlight = { Highlight.Default.copy(alpha = drag.pressProgress) },
-                shadow = { Shadow(alpha = drag.pressProgress) },
-                innerShadow = { val p = drag.pressProgress; InnerShadow(radius = 8f.dp * p, alpha = p) },
+                effects = { val p = .45f + .55f * drag.pressProgress; lens(10f.dp.toPx() * p, 14f.dp.toPx() * p, chromaticAberration = true) },
+                highlight = { Highlight.Default.copy(alpha = .7f + .3f * drag.pressProgress) },
+                shadow = { Shadow(alpha = .35f + .65f * drag.pressProgress) },
+                innerShadow = { val p = .3f + .7f * drag.pressProgress; InnerShadow(radius = 6f.dp * p, alpha = p) },
                 layerBlock = {
                     scaleX = drag.scaleX; scaleY = drag.scaleY
                     val v = drag.velocity / 10f
                     scaleX /= 1f - (v * .75f).coerceIn(-.2f, .2f); scaleY *= 1f - (v * .25f).coerceIn(-.2f, .2f)
                 },
-                onDrawSurface = {
-                    val p = drag.pressProgress
-                    drawRect(if (dark) Color.White.copy(alpha = .1f) else Color.Black.copy(alpha = .1f), alpha = 1f - p)
-                    drawRect(Color.Black.copy(alpha = .03f * p))
-                },
+                onDrawSurface = { drawRect(Color.White.copy(alpha = if (dark) .06f else .1f)) },
             )
             .height(56.dp).fillMaxWidth(1f / tabsCount))
     }

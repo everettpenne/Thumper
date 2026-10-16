@@ -50,6 +50,7 @@ import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.effects.lens
+import com.kyant.backdrop.effects.vibrancy
 import com.kyant.backdrop.highlight.Highlight
 import com.kyant.backdrop.shadow.InnerShadow
 import com.kyant.backdrop.shadow.Shadow
@@ -63,19 +64,20 @@ import kotlinx.coroutines.launch
 @Composable
 internal fun Modifier.glassControl(shape: androidx.compose.ui.graphics.Shape, press: GlassPressState, tint: Color?, surface: Color?,
                                   lensHeight: Float, lensAmount: Float, shadowed: Boolean): Modifier {
+    val frost = frostContainer()
     val backdrop = LocalGlassBackdrop.current
     if (backdrop == null) {
         return this.clip(shape).background(tint ?: surface ?: Color.Transparent).graphicsLayer { with(press) { swell() } }.then(press.light).then(press.watcher)
     }
     return drawBackdrop(
         backdrop = backdrop, shape = { shape },
-        effects = { glassColor(); blur(2f.dp.toPx()); lens(lensHeight.dp.toPx(), lensAmount.dp.toPx(), chromaticAberration = true) },
+        effects = { if (tint == null) { vibrancy(); blur(8f.dp.toPx()) } else { glassColor(); blur(2f.dp.toPx()) }; lens(lensHeight.dp.toPx(), lensAmount.dp.toPx(), chromaticAberration = true) },
         highlight = { GlassRim },
         shadow = { if (shadowed) Shadow(radius = 8f.dp, color = Color.Black.copy(alpha = .10f)) else null },
         layerBlock = { with(press) { deform() } },
         onDrawSurface = {
             if (tint != null) { drawRect(tint, blendMode = BlendMode.Hue); drawRect(tint.copy(alpha = .75f)) }
-            if (surface != null) drawRect(surface)
+            if (surface != null) drawRect(if (tint == null) frost else surface)
         },
     ).then(press.light).then(press.watcher)
 }

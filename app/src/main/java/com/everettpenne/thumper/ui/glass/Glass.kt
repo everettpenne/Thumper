@@ -3,6 +3,7 @@ package com.everettpenne.thumper.ui.glass
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.foundation.background
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
@@ -14,6 +15,7 @@ import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.effects.colorControls
 import com.kyant.backdrop.effects.lens
+import com.kyant.backdrop.effects.vibrancy
 import com.kyant.backdrop.highlight.Highlight
 import com.kyant.backdrop.highlight.HighlightStyle
 import com.kyant.backdrop.shadow.Shadow
@@ -77,3 +79,25 @@ fun Modifier.glassSurface(
 }
 
 internal fun lerpDp(a: Float, b: Float, t: Float) = lerp(a, b, t)
+
+/** The light frost of the Backdrop catalog's slider track and tab panel: a lens-bent, vibrant, moderately blurred pane under a pale wash. */
+@Composable
+internal fun frostContainer(): Color = if (isSystemInDarkTheme()) Color(0xFF121212).copy(alpha = .4f) else Color(0xFFFAFAFA).copy(alpha = .4f)
+
+/**
+ * Lightly frosted glass, for the controls that sit in the bars (the tab bar, search button, back button, action pill and search field):
+ * the same recipe as the catalog's slider track and tab panel (vibrancy, an 8dp blur, a lens at the edge, a pale wash). Falls back to the wash
+ * alone when there is no glass in scope.
+ */
+@Composable
+fun Modifier.frostedGlass(shape: Shape, lensHeight: Float = 12f, lensAmount: Float = 24f, shadowed: Boolean = false): Modifier {
+    val container = frostContainer()
+    val backdrop = LocalGlassBackdrop.current ?: return this.background(container, shape)
+    return drawBackdrop(
+        backdrop = backdrop, shape = { shape },
+        effects = { vibrancy(); blur(8f.dp.toPx()); lens(lensHeight.dp.toPx(), lensAmount.dp.toPx(), chromaticAberration = true) },
+        highlight = { GlassRim },
+        shadow = { if (shadowed) Shadow.Default else null },
+        onDrawSurface = { drawRect(container) },
+    )
+}

@@ -74,7 +74,7 @@ fun GlassCenteredTopBar(title: String, onBack: () -> Unit, modifier: Modifier = 
 fun GlassActionPill(modifier: Modifier = Modifier, content: @Composable RowScope.() -> Unit) {
     val ink = glassPalette().ink
     Row(modifier.height(48.dp)
-        .glassSurface(RoundedCornerShape(percent = 50), tint = ink.copy(alpha = .06f).compositeOver(glassPalette().tint), blurRadius = 6f, lensHeight = 12f, lensAmount = 24f, shadowed = false)
+        .frostedGlass(RoundedCornerShape(percent = 50), lensHeight = 12f, lensAmount = 24f)
         .padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically, content = content)
 }
 
