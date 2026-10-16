@@ -1,6 +1,6 @@
 package com.everettpenne.thumper.ui.components
 
-import com.everettpenne.thumper.ui.glass.pressSwell
+import com.everettpenne.glass.pressSwell
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -45,9 +45,9 @@ import com.everettpenne.thumper.data.model.Episode
 import com.everettpenne.thumper.data.model.Feed
 import com.everettpenne.thumper.data.model.Progress
 import com.everettpenne.thumper.playback.LocalPlayback
-import com.everettpenne.thumper.ui.glass.glassPalette
-import com.everettpenne.thumper.ui.glass.glassSurface
-import com.everettpenne.thumper.ui.theme.IosType
+import com.everettpenne.glass.glassPalette
+import com.everettpenne.glass.glassSurface
+import com.everettpenne.glass.IosType
 import com.everettpenne.thumper.ui.theme.Thumper
 import com.everettpenne.thumper.util.Format
 import com.everettpenne.thumper.util.Html
@@ -127,16 +127,16 @@ fun EpisodeMenuButton(episode: Episode, feed: Feed, modifier: Modifier = Modifie
         Box(Modifier.size(40.dp).clip(CircleShape).pressSwell().clickable(interactionSource = null, indication = null) { open = true }.semantics { contentDescription = "More for ${episode.title}" }, Alignment.Center) {
             Icon(Icons.Rounded.MoreHoriz, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        com.everettpenne.thumper.ui.glass.GlassDropdownMenu(open, { open = false }) {
-            com.everettpenne.thumper.ui.glass.GlassMenuItem("Play Next", { library.enqueue(episode, feed, next = true); open = false }, icon = Icons.Rounded.QueuePlayNext)
-            if (queued) com.everettpenne.thumper.ui.glass.GlassMenuItem("Remove from Up Next", { library.dequeue(episode.id); open = false }, icon = Icons.Rounded.PlaylistRemove)
-            else com.everettpenne.thumper.ui.glass.GlassMenuItem("Add to Up Next", { library.enqueue(episode, feed); open = false }, icon = Icons.Rounded.PlaylistAdd)
+        com.everettpenne.glass.GlassDropdownMenu(open, { open = false }) {
+            com.everettpenne.glass.GlassMenuItem("Play Next", { library.enqueue(episode, feed, next = true); open = false }, icon = Icons.Rounded.QueuePlayNext)
+            if (queued) com.everettpenne.glass.GlassMenuItem("Remove from Up Next", { library.dequeue(episode.id); open = false }, icon = Icons.Rounded.PlaylistRemove)
+            else com.everettpenne.glass.GlassMenuItem("Add to Up Next", { library.enqueue(episode, feed); open = false }, icon = Icons.Rounded.PlaylistAdd)
             when (downloads[episode.id]?.status) {
-                null, com.everettpenne.thumper.data.DownloadStatus.FAILED -> com.everettpenne.thumper.ui.glass.GlassMenuItem("Download", { graph.downloads.download(episode, feed); open = false }, icon = Icons.Rounded.Download)
-                com.everettpenne.thumper.data.DownloadStatus.DONE -> com.everettpenne.thumper.ui.glass.GlassMenuItem("Remove Download", { graph.downloads.remove(episode.id); open = false }, icon = Icons.Rounded.DeleteOutline)
-                else -> com.everettpenne.thumper.ui.glass.GlassMenuItem("Cancel Download", { graph.downloads.remove(episode.id); open = false }, icon = Icons.Rounded.Cancel)
+                null, com.everettpenne.thumper.data.DownloadStatus.FAILED -> com.everettpenne.glass.GlassMenuItem("Download", { graph.downloads.download(episode, feed); open = false }, icon = Icons.Rounded.Download)
+                com.everettpenne.thumper.data.DownloadStatus.DONE -> com.everettpenne.glass.GlassMenuItem("Remove Download", { graph.downloads.remove(episode.id); open = false }, icon = Icons.Rounded.DeleteOutline)
+                else -> com.everettpenne.glass.GlassMenuItem("Cancel Download", { graph.downloads.remove(episode.id); open = false }, icon = Icons.Rounded.Cancel)
             }
-            com.everettpenne.thumper.ui.glass.GlassMenuItem(if (played) "Mark as Unplayed" else "Mark as Played", { library.markPlayed(episode.id, !played); open = false }, icon = if (played) Icons.Rounded.RadioButtonUnchecked else Icons.Rounded.CheckCircleOutline)
+            com.everettpenne.glass.GlassMenuItem(if (played) "Mark as Unplayed" else "Mark as Played", { library.markPlayed(episode.id, !played); open = false }, icon = if (played) Icons.Rounded.RadioButtonUnchecked else Icons.Rounded.CheckCircleOutline)
         }
     }
 }

@@ -1,6 +1,6 @@
 package com.everettpenne.thumper.ui.screens
 
-import com.everettpenne.thumper.ui.glass.pressSwell
+import com.everettpenne.glass.pressSwell
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -9,8 +9,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.Icon
-import com.everettpenne.thumper.ui.glass.GlassAlert
-import com.everettpenne.thumper.ui.glass.GlassProgressBar
+import com.everettpenne.glass.GlassAlert
+import com.everettpenne.glass.GlassProgressBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -28,8 +28,8 @@ import com.everettpenne.thumper.data.DownloadStatus
 import com.everettpenne.thumper.graph
 import com.everettpenne.thumper.playback.LocalPlayback
 import com.everettpenne.thumper.ui.components.*
-import com.everettpenne.thumper.ui.glass.*
-import com.everettpenne.thumper.ui.theme.IosType
+import com.everettpenne.glass.*
+import com.everettpenne.glass.IosType
 import com.everettpenne.thumper.ui.theme.Thumper
 import com.everettpenne.thumper.util.Format
 

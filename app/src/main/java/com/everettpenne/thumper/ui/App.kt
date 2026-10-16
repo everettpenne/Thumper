@@ -36,7 +36,7 @@ import com.everettpenne.thumper.playback.rememberPlaybackUi
 import com.everettpenne.thumper.ui.components.GlassTextField
 import com.everettpenne.thumper.ui.components.MiniPlayer
 import com.everettpenne.thumper.ui.components.Navigator
-import com.everettpenne.thumper.ui.glass.*
+import com.everettpenne.glass.*
 import com.everettpenne.thumper.ui.screens.*
 import com.everettpenne.thumper.ui.theme.ThumperTheme
 import com.kyant.backdrop.backdrops.layerBackdrop
@@ -90,7 +90,7 @@ fun ThumperRoot(deepLink: Uri?) {
         val tabBar: (@Composable () -> Unit)? = if (route == Routes.PLAYER) null else ({
             Column {
                 MiniPlayer(onOpen = nav::openPlayer, modifier = Modifier.padding(bottom = 2.dp))
-                GlassTabBar(selected = lastTab, onSelect = { tab -> navController.navigate(tab.route) { popUpTo(Routes.LISTEN) { inclusive = false }; launchSingleTop = true } })
+                GlassTabBar(Tab.bar, selected = lastTab, search = Tab.Search, onSelect = { tab -> navController.navigate(tab.route) { popUpTo(Routes.LISTEN) { inclusive = false }; launchSingleTop = true } })
             }
         })
 

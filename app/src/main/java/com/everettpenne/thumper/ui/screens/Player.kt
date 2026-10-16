@@ -1,8 +1,8 @@
 package com.everettpenne.thumper.ui.screens
 
-import com.everettpenne.thumper.ui.glass.pressSwell
-import com.everettpenne.thumper.ui.glass.GlassSlider
-import com.everettpenne.thumper.ui.glass.GlassCircleButton
+import com.everettpenne.glass.pressSwell
+import com.everettpenne.glass.GlassSlider
+import com.everettpenne.glass.GlassCircleButton
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -30,8 +30,8 @@ import androidx.compose.ui.unit.dp
 import com.everettpenne.thumper.graph
 import com.everettpenne.thumper.playback.LocalPlayback
 import com.everettpenne.thumper.ui.components.*
-import com.everettpenne.thumper.ui.glass.*
-import com.everettpenne.thumper.ui.theme.IosType
+import com.everettpenne.glass.*
+import com.everettpenne.glass.IosType
 import com.everettpenne.thumper.ui.theme.Thumper
 import com.everettpenne.thumper.util.Format
 

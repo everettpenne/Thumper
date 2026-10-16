@@ -24,9 +24,9 @@ import com.everettpenne.thumper.data.model.DirectoryShow
 import com.everettpenne.thumper.data.model.stableId
 import com.everettpenne.thumper.graph
 import com.everettpenne.thumper.ui.components.*
-import com.everettpenne.thumper.ui.glass.GlassScreen
-import com.everettpenne.thumper.ui.glass.GlassTopBar
-import com.everettpenne.thumper.ui.theme.IosType
+import com.everettpenne.glass.GlassScreen
+import com.everettpenne.glass.GlassTopBar
+import com.everettpenne.glass.IosType
 import com.everettpenne.thumper.ui.theme.Thumper
 import kotlinx.coroutines.delay
 

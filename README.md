@@ -18,6 +18,8 @@ Nowhere, except where you point it. There is no account, no analytics and no ser
 
 ## Build
 
+The liquid-glass UI kit (components, theme, type scale) is the separate `Glass` project, pulled in with a Gradle `includeBuild("../Glass")`, so it must be checked out next to this folder.
+
 ```bash
 ./gradlew :app:assembleDebug      # JDK 21, Android SDK (compileSdk 36); minSdk 31
 ./gradlew :app:testDebugUnitTest  # JVM tests: the feed parser, HTML reader, fetcher, directories, OPML, library

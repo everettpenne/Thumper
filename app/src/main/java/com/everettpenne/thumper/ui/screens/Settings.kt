@@ -29,7 +29,7 @@ import com.everettpenne.thumper.data.feed.FeedFetch
 import com.everettpenne.thumper.data.feed.Opml
 import com.everettpenne.thumper.graph
 import com.everettpenne.thumper.ui.components.*
-import com.everettpenne.thumper.ui.glass.*
+import com.everettpenne.glass.*
 import com.everettpenne.thumper.ui.theme.Thumper
 import com.everettpenne.thumper.util.Format
 import kotlinx.coroutines.*

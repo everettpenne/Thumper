@@ -23,8 +23,8 @@ import coil3.compose.AsyncImage
 import com.everettpenne.thumper.graph
 import com.everettpenne.thumper.playback.LocalPlayback
 import com.everettpenne.thumper.ui.components.*
-import com.everettpenne.thumper.ui.glass.*
-import com.everettpenne.thumper.ui.theme.IosType
+import com.everettpenne.glass.*
+import com.everettpenne.glass.IosType
 import com.everettpenne.thumper.util.Format
 import com.everettpenne.thumper.util.Html
 

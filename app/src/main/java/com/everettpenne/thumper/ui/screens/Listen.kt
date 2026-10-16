@@ -1,6 +1,6 @@
 package com.everettpenne.thumper.ui.screens
 
-import com.everettpenne.thumper.ui.glass.GlassRefreshIndicator
+import com.everettpenne.glass.GlassRefreshIndicator
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -22,7 +22,7 @@ import com.everettpenne.thumper.data.model.FeedKind
 import com.everettpenne.thumper.graph
 import com.everettpenne.thumper.playback.LocalPlayback
 import com.everettpenne.thumper.ui.components.*
-import com.everettpenne.thumper.ui.glass.*
+import com.everettpenne.glass.*
 import com.everettpenne.thumper.util.Format
 import kotlinx.coroutines.launch
 
@@ -62,7 +62,7 @@ fun ListenScreen(nav: Navigator) {
                     Spacer(Modifier.height(10.dp))
                 }
                 if (queue.isNotEmpty()) {
-                    item { SectionTitle("Up Next") { androidx.compose.material3.Text("See all", style = com.everettpenne.thumper.ui.theme.IosType.subheadline.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold), color = com.everettpenne.thumper.ui.theme.Thumper.accent, modifier = Modifier.clickable { nav.openQueue() }) } }
+                    item { SectionTitle("Up Next") { androidx.compose.material3.Text("See all", style = com.everettpenne.glass.IosType.subheadline.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold), color = com.everettpenne.thumper.ui.theme.Thumper.accent, modifier = Modifier.clickable { nav.openQueue() }) } }
                     items(queue.take(3), key = { "q-" + it.episode.id }) { (ep, feed) ->
                         EpisodeRow(ep, feed, progress[ep.id], { nav.openEpisode(feed.id, ep.id) }, { playback.play(ep, feed) })
                     }

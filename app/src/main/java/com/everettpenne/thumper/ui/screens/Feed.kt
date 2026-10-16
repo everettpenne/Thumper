@@ -1,6 +1,6 @@
 package com.everettpenne.thumper.ui.screens
 
-import com.everettpenne.thumper.ui.glass.GlassAlert
+import com.everettpenne.glass.GlassAlert
 import androidx.compose.material3.Icon
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -27,8 +27,8 @@ import com.everettpenne.thumper.data.model.stableId
 import com.everettpenne.thumper.graph
 import com.everettpenne.thumper.playback.LocalPlayback
 import com.everettpenne.thumper.ui.components.*
-import com.everettpenne.thumper.ui.glass.*
-import com.everettpenne.thumper.ui.theme.IosType
+import com.everettpenne.glass.*
+import com.everettpenne.glass.IosType
 import com.everettpenne.thumper.util.Html
 
 /** A show or a feed: its cover and description, a subscribe button, and its episodes (or articles). Works for feeds you have not subscribed to yet. */

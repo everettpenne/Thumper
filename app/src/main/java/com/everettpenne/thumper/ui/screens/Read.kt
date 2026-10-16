@@ -1,6 +1,6 @@
 package com.everettpenne.thumper.ui.screens
 
-import com.everettpenne.thumper.ui.glass.GlassRefreshIndicator
+import com.everettpenne.glass.GlassRefreshIndicator
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -28,8 +28,8 @@ import com.everettpenne.thumper.data.model.Feed
 import com.everettpenne.thumper.data.model.FeedKind
 import com.everettpenne.thumper.graph
 import com.everettpenne.thumper.ui.components.*
-import com.everettpenne.thumper.ui.glass.*
-import com.everettpenne.thumper.ui.theme.IosType
+import com.everettpenne.glass.*
+import com.everettpenne.glass.IosType
 import com.everettpenne.thumper.ui.theme.Thumper
 import com.everettpenne.thumper.util.Format
 import com.everettpenne.thumper.util.Html
