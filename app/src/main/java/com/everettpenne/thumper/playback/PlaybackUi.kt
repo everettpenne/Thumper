@@ -10,6 +10,7 @@ import androidx.core.content.ContextCompat
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
@@ -35,6 +36,8 @@ class PlaybackUi(private val library: Library, private val settings: Settings, p
     var artworkUrl by mutableStateOf<String?>(null); private set
     var isPlaying by mutableStateOf(false); private set
     var buffering by mutableStateOf(false); private set
+    /** Why playback last stopped, in words to show, or null when all is well. Set when the player fails, cleared when it recovers. */
+    var error by mutableStateOf<String?>(null); private set
     var positionMs by mutableLongStateOf(0); private set
     var durationMs by mutableLongStateOf(0); private set
     var speed by mutableFloatStateOf(1f); private set
@@ -48,6 +51,7 @@ class PlaybackUi(private val library: Library, private val settings: Settings, p
 
     private val listener = object : Player.Listener {
         override fun onEvents(player: Player, events: Player.Events) { sync(player) }
+        override fun onPlayerError(error: PlaybackException) { this@PlaybackUi.error = error.message?.takeIf { it.isNotBlank() } ?: error.errorCodeName }
     }
 
     internal fun attach(c: MediaController) { controller = c; c.addListener(listener); sync(c) }
@@ -60,6 +64,7 @@ class PlaybackUi(private val library: Library, private val settings: Settings, p
         title = item?.mediaMetadata?.title?.toString().orEmpty(); showTitle = item?.mediaMetadata?.artist?.toString().orEmpty()
         artworkUrl = item?.mediaMetadata?.artworkUri?.toString()
         isPlaying = p.isPlaying; buffering = p.playbackState == Player.STATE_BUFFERING
+        if (p.playbackState == Player.STATE_READY) error = null
         positionMs = p.currentPosition.coerceAtLeast(0); durationMs = p.duration.takeIf { it != C.TIME_UNSET && it > 0 } ?: durationMs
         speed = p.playbackParameters.speed
         hasVideo = p.currentTracks.containsType(C.TRACK_TYPE_VIDEO); videoRatio = com.everettpenne.media.videoAspectRatio(p)
@@ -70,6 +75,7 @@ class PlaybackUi(private val library: Library, private val settings: Settings, p
 
     fun play(episode: Episode, feed: Feed) {
         val c = controller ?: return
+        error = null
         if (c.currentMediaItem?.mediaId == episode.id) { if (!c.isPlaying) c.play(); return }
         val saved = library.progress(episode.id)
         val start = saved?.takeIf { !it.played && it.durationMs > 0 && it.positionMs < it.durationMs - 10_000 }?.positionMs ?: 0L
@@ -85,6 +91,8 @@ class PlaybackUi(private val library: Library, private val settings: Settings, p
     fun skipBack() { controller?.seekBack(); tick() }
     fun skipForward() { controller?.seekForward(); tick() }
     fun seekTo(ms: Long) { controller?.seekTo(ms); positionMs = ms }
+    /** Try again after a playback failure: forget the error and ask the player to prepare and play once more. */
+    fun retry() { error = null; controller?.let { it.prepare(); it.play() } }
     fun changeSpeed(v: Float) { controller?.setPlaybackSpeed(v); speed = v; settings.setSpeed(v) }
     fun stop() { controller?.let { it.stop(); it.clearMediaItems() } }
 

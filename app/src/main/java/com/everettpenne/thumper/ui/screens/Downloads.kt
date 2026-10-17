@@ -45,8 +45,8 @@ fun DownloadsScreen(nav: Navigator, onBack: () -> Unit) {
     val onPhone = records.filter { state[it.episode.id]?.status == DownloadStatus.DONE }.sortedByDescending { it.requestedAt }
     var confirmAll by remember { mutableStateOf(false) }
 
-    GlassScreen(bars = { GlassCenteredTopBar("Downloads", onBack, Modifier.align(Alignment.TopCenter), subtitle = if (onPhone.isEmpty()) null else "${Format.bytes(total)} on this phone") }) {
-        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = topContentPadding() + 4.dp, bottom = bottomContentPadding()), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+    GlassScreen(bars = { GlassCenteredTopBar("Downloads", onBack, Modifier.align(Alignment.TopCenter), subtitle = if (onPhone.isEmpty()) null else "${Format.bytes(total)} on this phone") }) { contentPadding ->
+        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = contentPadding.calculateTopPadding() + 4.dp, bottom = contentPadding.calculateBottomPadding()), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             if (records.isEmpty()) item { EmptyState(Icons.Rounded.DownloadForOffline, "No downloads", "Choose Download from the ••• on an episode to listen without a connection.") }
             if (onPhone.isNotEmpty()) item {
                 Row(Modifier.padding(horizontal = 16.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -75,7 +75,7 @@ private fun ComingRow(r: DownloadRecord, info: DownloadInfo?, onCancel: () -> Un
     Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Artwork(r.episode.imageUrl ?: r.feed.imageUrl, 52.dp)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text(r.episode.title, style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(r.episode.title, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
             when (info?.status) {
                 DownloadStatus.FAILED -> Text("Download failed" + (info.problem?.let { ": $it" } ?: ""), style = IosType.caption1, color = Thumper.red)
                 else -> {

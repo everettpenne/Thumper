@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
@@ -54,9 +55,9 @@ fun PlayerScreen(nav: Navigator, onBack: () -> Unit) {
     val duration = pb.durationMs.coerceAtLeast(1)
     val shown = scrub?.let { (it * duration).toLong() } ?: pb.positionMs
 
-    GlassScreen(bars = { GlassCenteredTopBar("Now Playing", onBack, Modifier.align(Alignment.TopCenter)) }) {
+    GlassScreen(bars = { GlassCenteredTopBar("Now Playing", onBack, Modifier.align(Alignment.TopCenter)) }) { contentPadding ->
         if (!pb.hasEpisode) { EmptyState(Icons.Rounded.Headphones, "Nothing playing", "Start an episode and it will appear here."); return@GlassScreen }
-        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = topContentPadding() + 8.dp, bottom = 40.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding(), start = 24.dp, end = 24.dp),
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = contentPadding.calculateTopPadding() + 8.dp, bottom = 40.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding(), start = 24.dp, end = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(18.dp)) {
             val video = pb.controller
             if (pb.hasVideo && video != null) {
@@ -73,6 +74,14 @@ fun PlayerScreen(nav: Navigator, onBack: () -> Unit) {
                 Text(pb.showTitle, style = MaterialTheme.typography.bodyLarge, color = Thumper.accent, maxLines = 1, modifier = Modifier.clickable {
                     graph.library.feeds.value.firstOrNull { it.id == pb.feedId }?.let { nav.openFeed(it.url) } })
             }
+            pb.error?.let { msg ->
+                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(percent = 50)).background(Thumper.red.copy(alpha = .12f)).padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Icon(Icons.Rounded.ErrorOutline, null, tint = Thumper.red, modifier = Modifier.size(20.dp))
+                    Text(msg, style = MaterialTheme.typography.bodyMedium, color = Thumper.red, modifier = Modifier.weight(1f), maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    GlassButton("Retry", pb::retry)
+                }
+            }
             Column(Modifier.fillMaxWidth()) {
 GlassSlider(value = scrub ?: (pb.positionMs.toFloat() / duration).coerceIn(0f, 1f), onValueChange = { scrub = it },
                     onValueChangeFinished = { scrub?.let { pb.seekTo((it * duration).toLong()) }; scrub = null }, description = "Seek")
@@ -84,7 +93,8 @@ GlassSlider(value = scrub ?: (pb.positionMs.toFloat() / duration).coerceIn(0f, 1
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
                 SkipButton(false, back, pb::skipBack)
                 GlassCircleButton(pb::toggle, size = 76.dp, tint = Thumper.accent, description = if (pb.isPlaying) "Pause" else "Play") {
-                    Icon(if (pb.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, null, tint = androidx.compose.ui.graphics.Color.White, modifier = Modifier.size(44.dp))
+                    if (pb.buffering) CircularProgressIndicator(Modifier.size(38.dp), color = androidx.compose.ui.graphics.Color.White, strokeWidth = 3.dp)
+                    else Icon(if (pb.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, null, tint = androidx.compose.ui.graphics.Color.White, modifier = Modifier.size(44.dp))
                 }
                 SkipButton(true, forward, pb::skipForward)
             }

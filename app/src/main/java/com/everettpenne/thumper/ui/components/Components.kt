@@ -86,8 +86,8 @@ fun EpisodeRow(
         if (showArt) Artwork(episode.imageUrl ?: feed.imageUrl, 56.dp)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             if (showShow) Text(feed.title, style = IosType.caption1, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(episode.title, style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis,
-                color = if (current) Thumper.accent else MaterialTheme.colorScheme.onSurface.copy(alpha = if (played) .55f else 1f))
+            Text(episode.title, style = MaterialTheme.typography.titleMedium.copy(fontWeight = if (played) FontWeight.Normal else FontWeight.SemiBold), maxLines = 2, overflow = TextOverflow.Ellipsis,
+                color = if (current) Thumper.accent else MaterialTheme.colorScheme.onSurface.copy(alpha = if (played) .6f else 1f))
             val meta = buildList {
                 add(Format.relativeDate(episode.publishedAt))
                 val left = progress?.takeIf { !it.played && it.positionMs > 5_000 }?.let { Format.remaining(it.durationMs, it.positionMs) }
@@ -145,11 +145,17 @@ fun EpisodeMenuButton(episode: Episode, feed: Feed, modifier: Modifier = Modifie
     }
 }
 
-/** A show's cover with its name beneath, for a row of shows. */
+/** A show's cover with its name beneath, for a row of shows. [progress] (0..1) draws a thin "where you are" line under the art, for Continue Listening. */
 @Composable
-fun ShowTile(feed: Feed, onClick: () -> Unit, modifier: Modifier = Modifier, size: Dp = 112.dp) {
+fun ShowTile(feed: Feed, onClick: () -> Unit, modifier: Modifier = Modifier, size: Dp = 112.dp, progress: Float? = null) {
     Column(modifier.width(size).clickable(onClick = onClick), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Artwork(feed.imageUrl, size, radius = 16.dp)
+        if (progress != null) {
+            val track = glassPalette().ink.copy(alpha = .16f)
+            Box(Modifier.fillMaxWidth().height(3.dp).clip(RoundedCornerShape(percent = 50)).background(track)) {
+                Box(Modifier.fillMaxHeight().fillMaxWidth(progress.coerceIn(0f, 1f)).clip(RoundedCornerShape(percent = 50)).background(Thumper.accent))
+            }
+        }
         Text(feed.title, style = IosType.footnote.copy(fontWeight = FontWeight.Medium), maxLines = 2, overflow = TextOverflow.Ellipsis)
     }
 }
@@ -167,16 +173,21 @@ fun MiniPlayer(onOpen: () -> Unit, modifier: Modifier = Modifier) {
     val pb = LocalPlayback.current
     if (!pb.hasEpisode) return
     val ink = glassPalette().ink
-    Row(modifier.fillMaxWidth().padding(horizontal = 16.dp).height(64.dp).testTag("mini-player")
-        .glassSurface(RoundedCornerShape(percent = 50), blurRadius = 8f, lensHeight = 22f, lensAmount = 32f).clip(RoundedCornerShape(percent = 50)).clickable(onClick = onOpen).padding(start = 10.dp, end = 6.dp),
-        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        Artwork(pb.artworkUrl, 44.dp, radius = 22.dp)
-        Column(Modifier.weight(1f)) {
-            Text(pb.title, style = MaterialTheme.typography.titleSmall, color = ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(pb.showTitle, style = IosType.caption1, color = ink.copy(alpha = .65f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+    val fraction = if (pb.durationMs > 0) (pb.positionMs.toFloat() / pb.durationMs).coerceIn(0f, 1f) else 0f
+    Box(modifier.fillMaxWidth().padding(horizontal = 16.dp).height(64.dp).testTag("mini-player")
+        .glassSurface(RoundedCornerShape(percent = 50), blurRadius = 8f, lensHeight = 22f, lensAmount = 32f).clip(RoundedCornerShape(percent = 50)).clickable(onClick = onOpen)) {
+        Row(Modifier.fillMaxSize().padding(start = 10.dp, end = 6.dp),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Artwork(pb.artworkUrl, 44.dp, radius = 22.dp)
+            Column(Modifier.weight(1f)) {
+                Text(pb.title, style = MaterialTheme.typography.titleSmall, color = ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(pb.showTitle, style = IosType.caption1, color = ink.copy(alpha = .65f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            MiniButton(if (pb.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (pb.isPlaying) "Pause" else "Play", ink, pb::toggle)
+            MiniButton(Icons.Rounded.Forward30, "Skip forward", ink, pb::skipForward)
         }
-        MiniButton(if (pb.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (pb.isPlaying) "Pause" else "Play", ink, pb::toggle)
-        MiniButton(Icons.Rounded.Forward30, "Skip forward", ink, pb::skipForward)
+        // A hairline of where you are, so the capsule also shows progress at a glance (like Apple and Spotify's mini players).
+        if (fraction > 0f) Box(Modifier.align(Alignment.BottomStart).fillMaxWidth(fraction).height(3.dp).background(Thumper.accent, RoundedCornerShape(percent = 50)))
     }
 }
 

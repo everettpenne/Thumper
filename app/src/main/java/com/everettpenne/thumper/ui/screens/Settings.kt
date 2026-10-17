@@ -81,8 +81,8 @@ fun SettingsScreen(nav: Navigator, onBack: () -> Unit) {
         }
     }
 
-    GlassScreen(bars = { GlassCenteredTopBar("Settings", onBack, Modifier.align(Alignment.TopCenter)) }) {
-        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = topContentPadding(), bottom = bottomContentPadding(), start = 16.dp, end = 16.dp), verticalArrangement = Arrangement.spacedBy(22.dp)) {
+    GlassScreen(bars = { GlassCenteredTopBar("Settings", onBack, Modifier.align(Alignment.TopCenter)) }) { contentPadding ->
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = contentPadding.calculateTopPadding(), bottom = contentPadding.calculateBottomPadding(), start = 16.dp, end = 16.dp), verticalArrangement = Arrangement.spacedBy(22.dp)) {
             Group("Find Podcasts With", footer = "Apple's directory needs nothing. Podcast Index is an open, independent directory; its free API needs a key and secret from api.podcastindex.org. Either way only your search words are sent, and your shows' episodes always come straight from the shows' own feeds.") {
                 DirectoryChoice.entries.forEach { c -> ChoiceRow(c.label, c == choice) { settings.setDirectory(c) } }
                 if (choice == DirectoryChoice.PODCAST_INDEX) Column(Modifier.padding(horizontal = 16.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {

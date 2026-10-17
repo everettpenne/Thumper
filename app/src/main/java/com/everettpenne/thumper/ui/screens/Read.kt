@@ -72,11 +72,11 @@ fun ReadScreen(nav: Navigator) {
                 PillIcon(Icons.Rounded.Add, "Add a feed", { nav.addFeed() }); PillIcon(Icons.Rounded.Settings, "Settings", nav::openSettings)
             }
         }
-    }) {
+    }) { contentPadding ->
         val pullState = androidx.compose.material3.pulltorefresh.rememberPullToRefreshState()
         PullToRefreshBox(refreshing, { scope.launch { graph.refreshAll(force = true) } }, Modifier.fillMaxSize(), state = pullState,
-            indicator = { GlassRefreshIndicator(pullState, refreshing, topContentPadding()) }) {
-            LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = topContentPadding() + 4.dp, bottom = bottomContentPadding())) {
+            indicator = { GlassRefreshIndicator(pullState, refreshing, contentPadding.calculateTopPadding()) }) {
+            LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = contentPadding.calculateTopPadding() + 4.dp, bottom = contentPadding.calculateBottomPadding())) {
                 if (readingFeeds.size > 1) item {
                     LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         item { GlassChip(only == null, { only = null }) { Text("All") } }

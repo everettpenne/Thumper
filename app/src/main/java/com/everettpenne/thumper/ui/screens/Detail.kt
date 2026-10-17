@@ -39,11 +39,11 @@ fun EpisodeScreen(feedId: String, episodeId: String, nav: Navigator, onBack: () 
     val content = contents[feedId] ?: graph.previews[feedId]
     val episode = content?.episodes?.firstOrNull { it.id == episodeId }
     val progress = progressMap[episodeId]
-    GlassScreen(bars = { GlassCenteredTopBar("", onBack, Modifier.align(Alignment.TopCenter)) }) {
+    GlassScreen(bars = { GlassCenteredTopBar("", onBack, Modifier.align(Alignment.TopCenter)) }) { contentPadding ->
         if (content == null || episode == null) { EmptyState(Icons.Rounded.ErrorOutline, "Episode not found", "It may have been removed from the feed."); return@GlassScreen }
         val feed = content.feed
         val current = playback.episodeId == episode.id
-        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = topContentPadding(), bottom = bottomContentPadding(), start = 20.dp, end = 20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = contentPadding.calculateTopPadding(), bottom = contentPadding.calculateBottomPadding(), start = 20.dp, end = 20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.Bottom) {
                 Artwork(episode.imageUrl ?: feed.imageUrl, 104.dp, radius = 18.dp, zoomable = true)
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -89,10 +89,10 @@ fun ArticleScreen(feedId: String, articleId: String, onBack: () -> Unit) {
     val content = contents[feedId] ?: graph.previews[feedId]
     val article = content?.articles?.firstOrNull { it.id == articleId }
     LaunchedEffect(articleId) { graph.library.markRead(articleId) }
-    GlassScreen(bars = { GlassCenteredTopBar("", onBack, Modifier.align(Alignment.TopCenter)) }) {
+    GlassScreen(bars = { GlassCenteredTopBar("", onBack, Modifier.align(Alignment.TopCenter)) }) { contentPadding ->
         if (content == null || article == null) { EmptyState(Icons.Rounded.ErrorOutline, "Article not found", "It may have been removed from the feed."); return@GlassScreen }
         val body = remember(article.id) { article.contentHtml }
-        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = topContentPadding(), bottom = bottomContentPadding(), start = 20.dp, end = 20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = contentPadding.calculateTopPadding(), bottom = contentPadding.calculateBottomPadding(), start = 20.dp, end = 20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Text(article.title, style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.SemiBold))
             Text(listOf(content.feed.title, article.author.takeIf { it.isNotEmpty() }, Format.relativeDate(article.publishedAt).takeIf { it.isNotEmpty() }).filterNotNull().joinToString("  ·  "), style = IosType.footnote, color = MaterialTheme.colorScheme.onSurfaceVariant)
             val openImages = com.everettpenne.media.LocalImageViewer.current

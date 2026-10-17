@@ -40,8 +40,8 @@ fun QueueScreen(nav: Navigator, onBack: () -> Unit) {
     GlassScreen(bars = {
         GlassCenteredTopBar("Up Next", onBack, Modifier.align(Alignment.TopCenter), subtitle = if (queue.isEmpty()) null else "${queue.size} episode" + if (queue.size == 1) "" else "s",
             trailing = { if (queue.isNotEmpty()) GlassIconButton(Icons.Rounded.ClearAll, "Clear Up Next", { library.clearQueue() }, size = 44) })
-    }) {
-        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = topContentPadding() + 4.dp, bottom = bottomContentPadding()), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+    }) { contentPadding ->
+        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = contentPadding.calculateTopPadding() + 4.dp, bottom = contentPadding.calculateBottomPadding()), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             if (playback.hasEpisode) item {
                 SectionTitle("Now Playing"); Spacer(Modifier.height(6.dp))
                 Row(Modifier.fillMaxWidth().clickable(onClick = nav::openPlayer).padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -74,7 +74,7 @@ private fun QueueRow(entry: QueueEntry, index: Int, last: Int, nav: Navigator) {
         Artwork(e.imageUrl ?: entry.feed.imageUrl, 52.dp)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(entry.feed.title, style = IosType.caption1, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(e.title, style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(e.title, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Text(listOf(Format.relativeDate(e.publishedAt), Format.duration(e.durationSec)).filter { it.isNotEmpty() }.joinToString("  ·  "), style = IosType.caption1, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Box {

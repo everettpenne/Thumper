@@ -80,8 +80,8 @@ fun SearchScreen(nav: Navigator) {
             .padding(bottom = if (imeVisible) 8.dp else 92.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + (if (com.everettpenne.thumper.playback.LocalPlayback.current.hasEpisode) 76.dp else 0.dp))) {
             GlassTextField(query, { query = it }, "Shows, or a feed address", leading = Icons.Rounded.Search, imeAction = ImeAction.Search, onSubmit = { if (address) nav.addFeed(query.trim()) })
         }
-    }) {
-        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = topContentPadding() + 12.dp, bottom = 240.dp)) {
+    }) { contentPadding ->
+        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = contentPadding.calculateTopPadding() + 12.dp, bottom = 240.dp)) {
             if (address) item {
                 Row(Modifier.fillMaxWidth().clickable { nav.addFeed(query.trim()) }.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Icon(Icons.Rounded.RssFeed, null, tint = Thumper.accent, modifier = Modifier.size(32.dp))

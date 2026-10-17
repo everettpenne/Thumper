@@ -46,17 +46,17 @@ fun ListenScreen(nav: Navigator) {
         GlassTopBar("Listen", Modifier.align(Alignment.TopCenter)) {
             GlassActionPill { PillIcon(Icons.Rounded.DownloadForOffline, "Downloads", nav::openDownloads); PillIcon(Icons.Rounded.Add, "Add a feed", { nav.addFeed() }); PillIcon(Icons.Rounded.Settings, "Settings", nav::openSettings) }
         }
-    }) {
+    }) { contentPadding ->
         val pullState = androidx.compose.material3.pulltorefresh.rememberPullToRefreshState()
         PullToRefreshBox(refreshing, { scope.launch { graph.refreshAll(force = true) } }, Modifier.fillMaxSize(), state = pullState,
-            indicator = { GlassRefreshIndicator(pullState, refreshing, topContentPadding()) }) {
-            LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = topContentPadding() + 4.dp, bottom = bottomContentPadding()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            indicator = { GlassRefreshIndicator(pullState, refreshing, contentPadding.calculateTopPadding()) }) {
+            LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = contentPadding.calculateTopPadding() + 4.dp, bottom = contentPadding.calculateBottomPadding()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (podcasts.isEmpty()) item { EmptyListen(nav) }
                 if (inProgress.isNotEmpty()) item {
                     SectionTitle("Continue Listening")
                     LazyRow(Modifier.padding(top = 10.dp), contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         items(inProgress, key = { it.first.id }) { (ep, feed) ->
-                            ShowTile(feed.copy(title = ep.title, imageUrl = ep.imageUrl ?: feed.imageUrl), { nav.openEpisode(feed.id, ep.id) }, size = 132.dp)
+                            ShowTile(feed.copy(title = ep.title, imageUrl = ep.imageUrl ?: feed.imageUrl), { nav.openEpisode(feed.id, ep.id) }, size = 132.dp, progress = progress[ep.id]?.fraction)
                         }
                     }
                     Spacer(Modifier.height(10.dp))

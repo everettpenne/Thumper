@@ -58,8 +58,8 @@ fun FeedScreen(url: String, nav: Navigator, onBack: () -> Unit) {
         }
     }
 
-    GlassScreen(bars = { GlassCenteredTopBar("", onBack, Modifier.align(Alignment.TopCenter)) }) {
-        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = topContentPadding(), bottom = bottomContentPadding()), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+    GlassScreen(bars = { GlassCenteredTopBar("", onBack, Modifier.align(Alignment.TopCenter)) }) { contentPadding ->
+        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = contentPadding.calculateTopPadding(), bottom = contentPadding.calculateBottomPadding()), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             if (content == null) item { if (failure != null) ErrorState(failure!!) { retry++ } else LoadingRow() }
             content?.let { c ->
                 item {

@@ -21,7 +21,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.everettpenne.thumper.data.api.ApiResult
 import com.everettpenne.thumper.data.api.Failure
@@ -62,13 +61,6 @@ fun <T> rememberLoad(key: Any?, block: suspend () -> ApiResult<T>): Loader<T> {
     }
     return Loader(state) { nonce++ }
 }
-
-@Composable
-fun topContentPadding(): Dp = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 64.dp
-
-@Composable
-fun bottomContentPadding(): Dp = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 104.dp +
-    (if (com.everettpenne.thumper.playback.LocalPlayback.current.hasEpisode) 76.dp else 0.dp)          // room for the mini player above the tab bar
 
 @Composable
 fun LoadingRow() = Box(Modifier.fillMaxWidth().padding(24.dp), Alignment.Center) { CircularProgressIndicator(Modifier.size(28.dp), strokeWidth = 3.dp) }
