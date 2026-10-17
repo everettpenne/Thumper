@@ -17,6 +17,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
@@ -92,8 +93,8 @@ fun ArticleScreen(feedId: String, articleId: String, onBack: () -> Unit) {
         if (content == null || article == null) { EmptyState(Icons.Rounded.ErrorOutline, "Article not found", "It may have been removed from the feed."); return@GlassScreen }
         val body = remember(article.id) { article.contentHtml }
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = topContentPadding(), bottom = bottomContentPadding(), start = 20.dp, end = 20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            Text(article.title, style = MaterialTheme.typography.headlineSmall)
-            Text(listOf(content.feed.title, article.author.takeIf { it.isNotEmpty() }, Format.relativeDate(article.publishedAt).takeIf { it.isNotEmpty() }).filterNotNull().joinToString("  ·  "), style = IosType.caption1, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(article.title, style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.SemiBold))
+            Text(listOf(content.feed.title, article.author.takeIf { it.isNotEmpty() }, Format.relativeDate(article.publishedAt).takeIf { it.isNotEmpty() }).filterNotNull().joinToString("  ·  "), style = IosType.footnote, color = MaterialTheme.colorScheme.onSurfaceVariant)
             val openImages = com.everettpenne.media.LocalImageViewer.current
             // the lead picture, unless the text already opens with it
             if (article.imageUrl != null && !body.contains(article.imageUrl)) AsyncImage(article.imageUrl, null, Modifier.fillMaxWidth().clip(androidx.compose.foundation.shape.RoundedCornerShape(14.dp)).clickable { openImages(listOf(article.imageUrl), 0) }, contentScale = ContentScale.FillWidth)

@@ -53,13 +53,14 @@ import com.everettpenne.thumper.ui.theme.Thumper
 import com.everettpenne.thumper.util.Format
 import com.everettpenne.thumper.util.Html
 
-/** Cover art from the web, with a quiet placeholder while it loads or when a show has none. */
+/** Cover art from the web, with a quiet placeholder while it loads or when a show has none. [aspectRatio] is width ÷ height (1 for a square). */
 @Composable
-fun Artwork(url: String?, size: Dp, modifier: Modifier = Modifier, radius: Dp = 12.dp, placeholder: ImageVector = Icons.Rounded.Podcasts, zoomable: Boolean = false) {
+fun Artwork(url: String?, size: Dp, modifier: Modifier = Modifier, radius: Dp = 12.dp, placeholder: ImageVector = Icons.Rounded.Podcasts, zoomable: Boolean = false, aspectRatio: Float = 1f) {
     val openImages = LocalImageViewer.current
-    Box(modifier.size(size).clip(RoundedCornerShape(radius)).background(MaterialTheme.colorScheme.surfaceVariant)
+    val height = size / aspectRatio
+    Box(modifier.size(width = size, height = height).clip(RoundedCornerShape(radius)).background(MaterialTheme.colorScheme.surfaceVariant)
         .then(if (zoomable && url != null) Modifier.clickable { openImages(listOf(url), 0) } else Modifier), contentAlignment = Alignment.Center) {
-        Icon(placeholder, null, tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = .35f), modifier = Modifier.size(size * .4f))
+        Icon(placeholder, null, tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = .35f), modifier = Modifier.size(minOf(size, height) * .4f))
         if (url != null) AsyncImage(url, null, Modifier.matchParentSize(), contentScale = ContentScale.Crop)
     }
 }
@@ -195,12 +196,12 @@ fun RichText(html: String, modifier: Modifier = Modifier) {
             if (r.href != null) withLink(LinkAnnotation.Url(r.href, link)) { withStyle(style) { append(r.text) } } else withStyle(style) { append(r.text) }
         }
     }
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
         val openImages = LocalImageViewer.current
         val pictures = blocks.filterIsInstance<Html.Block.Image>().map { it.url }
         for (b in blocks) when (b) {
             is Html.Block.Paragraph -> Text(annotated(b.runs), style = MaterialTheme.typography.bodyLarge)
-            is Html.Block.Heading -> Text(annotated(b.runs), style = if (b.level <= 2) MaterialTheme.typography.titleLarge else MaterialTheme.typography.titleMedium)
+            is Html.Block.Heading -> Text(annotated(b.runs), Modifier.padding(top = if (b.level <= 2) 8.dp else 4.dp), style = if (b.level <= 2) MaterialTheme.typography.titleLarge else MaterialTheme.typography.titleMedium)
             is Html.Block.ListItem -> Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { Text(b.marker, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(annotated(b.runs), style = MaterialTheme.typography.bodyLarge) }
             is Html.Block.Quote -> Row(Modifier.height(androidx.compose.foundation.layout.IntrinsicSize.Min)) {
                 Box(Modifier.width(3.dp).fillMaxHeight().background(Thumper.accent.copy(alpha = .6f), RoundedCornerShape(2.dp)))
