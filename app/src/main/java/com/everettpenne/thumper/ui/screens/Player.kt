@@ -30,6 +30,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.everettpenne.thumper.graph
 import com.everettpenne.thumper.playback.LocalPlayback
+import com.everettpenne.thumper.playback.NextUp
 import com.everettpenne.thumper.ui.components.*
 import com.everettpenne.glass.*
 import com.everettpenne.media.FullscreenVideo
@@ -48,6 +49,8 @@ fun PlayerScreen(nav: Navigator, onBack: () -> Unit) {
     val pb = LocalPlayback.current
     val graph = LocalContext.current.graph
     val back by graph.settings.skipBackSeconds.collectAsState(); val forward by graph.settings.skipForwardSeconds.collectAsState()
+    val queue by graph.library.queue.collectAsState(); val contents by graph.library.contents.collectAsState(); val progress by graph.library.progress.collectAsState()
+    val nextUp = remember(pb.episodeId, pb.feedId, queue, contents, progress) { NextUp.next(pb.episodeId, pb.feedId, queue, contents, progress) }
     var scrub by remember { mutableStateOf<Float?>(null) }
     var fullscreen by remember { mutableStateOf(false) }
     var speedMenu by remember { mutableStateOf(false) }; var sleepMenu by remember { mutableStateOf(false) }
@@ -91,15 +94,19 @@ GlassSlider(value = scrub ?: (pb.positionMs.toFloat() / duration).coerceIn(0f, 1
                 }
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
+                EpisodeSkipButton(previous = true, onClick = pb::previous)
                 SkipButton(false, back, pb::skipBack)
                 GlassCircleButton(pb::toggle, size = 76.dp, tint = Thumper.accent, description = if (pb.isPlaying) "Pause" else "Play") {
                     if (pb.buffering) CircularProgressIndicator(Modifier.size(38.dp), color = androidx.compose.ui.graphics.Color.White, strokeWidth = 3.dp)
                     else Icon(if (pb.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, null, tint = androidx.compose.ui.graphics.Color.White, modifier = Modifier.size(44.dp))
                 }
                 SkipButton(true, forward, pb::skipForward)
+                EpisodeSkipButton(previous = false, enabled = nextUp != null, onClick = pb::next)
             }
-            val upNext by graph.library.queue.collectAsState()
-            if (upNext.isNotEmpty()) GlassButton({ pb.next() }, Modifier.fillMaxWidth()) { Icon(Icons.Rounded.SkipNext, null); Text("Next: ${upNext.first().episode.title}", maxLines = 1, overflow = TextOverflow.Ellipsis) }
+            nextUp?.let { entry ->
+                Text("Up next: ${entry.episode.title}", style = IosType.caption1, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().clickable { pb.next() }.padding(vertical = 4.dp))
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Box {
                     GlassChip(false, { speedMenu = true }) { ChipLabel(Icons.Rounded.Speed, Format.speed(pb.speed)) }
@@ -113,12 +120,21 @@ GlassSlider(value = scrub ?: (pb.positionMs.toFloat() / duration).coerceIn(0f, 1
                         GlassMenuItem("End of episode", { pb.sleep(endOfEpisode = true); sleepMenu = false })
                     }
                 }
-                val queued by graph.library.queue.collectAsState()
-                if (queued.isNotEmpty()) GlassChip(false, { nav.openQueue() }) { ChipLabel(Icons.Rounded.QueueMusic, "Up Next ${queued.size}") }
+                if (queue.isNotEmpty()) GlassChip(false, { nav.openQueue() }) { ChipLabel(Icons.Rounded.QueueMusic, "Up Next ${queue.size}") }
                 val ep = pb.episodeId; val fid = pb.feedId
                 if (ep != null && fid != null) GlassChip(false, { nav.openEpisode(fid, ep) }) { ChipLabel(Icons.Rounded.Notes, "Notes") }
             }
         }
+    }
+}
+
+/** Skip to the previous or next episode: the same glass circle as the seconds skips, with the kit's transport glyphs. */
+@Composable
+private fun EpisodeSkipButton(previous: Boolean, enabled: Boolean = true, onClick: () -> Unit) {
+    val ink = glassPalette().ink
+    Box(Modifier.size(52.dp).clip(CircleShape).pressSwell().clickable(interactionSource = null, indication = null, enabled = enabled, onClick = onClick)
+        .semantics { contentDescription = if (previous) "Previous episode" else "Next episode" }, Alignment.Center) {
+        Icon(if (previous) Icons.Rounded.SkipPrevious else Icons.Rounded.SkipNext, null, Modifier.size(40.dp), tint = ink.copy(alpha = if (enabled) 1f else .35f))
     }
 }
 

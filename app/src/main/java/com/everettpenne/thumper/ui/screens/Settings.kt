@@ -48,6 +48,7 @@ fun SettingsScreen(nav: Navigator, onBack: () -> Unit) {
     val scope = rememberCoroutineScope()
     val uri = LocalUriHandler.current
     val choice by settings.directory.collectAsState(); val back by settings.skipBackSeconds.collectAsState(); val forward by settings.skipForwardSeconds.collectAsState(); val speed by settings.speed.collectAsState()
+    val autoplay by settings.autoplay.collectAsState()
     val wifiOnly by settings.wifiOnlyDownloads.collectAsState(); val deletePlayed by settings.deleteWhenPlayed.collectAsState(); val downloadBytes by graph.downloads.totalBytes.collectAsState(0L)
     val hasKeys by settings.hasPodcastIndexKeys.collectAsState(); val feeds by graph.library.feeds.collectAsState(); val refreshing by graph.refreshing.collectAsState()
     var key by remember { mutableStateOf(settings.keys()?.first.orEmpty()) }; var secret by remember { mutableStateOf(settings.keys()?.second.orEmpty()) }
@@ -100,6 +101,7 @@ fun SettingsScreen(nav: Navigator, onBack: () -> Unit) {
                     Labeled("Skip forward") { SKIPS.forEach { s -> GlassChip(s == forward, { settings.setSkipForward(s) }) { Text("${s}s") } } }
                     Labeled("Starting speed") { SPEEDS.forEach { s -> GlassChip(s == speed, { settings.setSpeed(s) }) { Text(Format.speed(s)) } } }
                 }
+                SwitchRow(Icons.Rounded.Autorenew, "Autoplay Next Episode", autoplay, settings::setAutoplay)
             }
             Group("Downloads", footer = "Downloaded episodes are saved in the app's own storage and play with no connection.") {
                 SwitchRow(Icons.Rounded.Wifi, "Download Only on Wi-Fi", wifiOnly, settings::setWifiOnlyDownloads)

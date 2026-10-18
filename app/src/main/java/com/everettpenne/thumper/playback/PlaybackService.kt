@@ -21,6 +21,12 @@ import com.everettpenne.thumper.MainActivity
 import com.everettpenne.thumper.graph
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.launch
 
 object PlaybackCommands {
     /** Sets the sleep timer: [MINUTES] > 0 pauses after that long, [END_OF_EPISODE] pauses when the episode ends, 0 cancels it. */
@@ -42,6 +48,7 @@ class PlaybackService : MediaSessionService() {
     private val sleepRunnable = Runnable { session?.player?.pause() }
     private var saver: ProgressSaver? = null
     private var queue: QueueSync? = null
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     override fun onCreate() {
         super.onCreate()
@@ -53,7 +60,12 @@ class PlaybackService : MediaSessionService() {
             .setAudioAttributes(AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_SPEECH).build(), true)
             .setHandleAudioBecomingNoisy(true)
             .setSeekBackIncrementMs(graph.settings.skipBackSeconds.value * 1000L).setSeekForwardIncrementMs(graph.settings.skipForwardSeconds.value * 1000L)
+            // "Previous" restarts the current episode once past this point, matching the app's own previous-episode rule.
+            .setMaxSeekToPreviousPositionMs(NextUp.RESTART_AFTER_MS)
             .build()
+        // Autoplay ON lets the next episode start by itself; OFF pauses at the end of the current one (the next stays available to "next").
+        player.setPauseAtEndOfMediaItems(!graph.settings.autoplay.value)
+        scope.launch { graph.settings.autoplay.collect { player.setPauseAtEndOfMediaItems(!it) } }
         saver = ProgressSaver(player, graph.library).also { player.addListener(it) }
         queue = QueueSync(player, graph.library, graph.localFiles).also { player.addListener(it) }
         player.addListener(object : Player.Listener {
@@ -88,7 +100,7 @@ class PlaybackService : MediaSessionService() {
     override fun onTaskRemoved(rootIntent: Intent?) { pauseAllPlayersAndStopSelf() }
 
     override fun onDestroy() {
-        cancelSleep(); saver?.finish(); queue?.release()
+        cancelSleep(); saver?.finish(); queue?.release(); scope.cancel()
         session?.let { it.player.release(); it.release() }
         session = null
         super.onDestroy()

@@ -19,6 +19,7 @@ class Settings(context: Context, private val secure: SecureStore) {
     private val _hasKeys = MutableStateFlow(keys() != null)
     private val _wifiOnly = MutableStateFlow(prefs.getBoolean("wifiOnlyDownloads", true))
     private val _deleteWhenPlayed = MutableStateFlow(prefs.getBoolean("deleteWhenPlayed", false))
+    private val _autoplay = MutableStateFlow(prefs.getBoolean("autoplay", true))
 
     /** Which directory the Search tab asks. Apple's needs nothing; Podcast Index needs the key and secret below. */
     val directory: StateFlow<DirectoryChoice> = _directory.asStateFlow()
@@ -31,6 +32,8 @@ class Settings(context: Context, private val secure: SecureStore) {
     val wifiOnlyDownloads: StateFlow<Boolean> = _wifiOnly.asStateFlow()
     /** Delete a downloaded episode once it has been played. */
     val deleteWhenPlayed: StateFlow<Boolean> = _deleteWhenPlayed.asStateFlow()
+    /** When an episode ends, play the next one (Up Next, or the next unplayed episode of the same show) by itself. On by default. */
+    val autoplay: StateFlow<Boolean> = _autoplay.asStateFlow()
 
     fun setDirectory(v: DirectoryChoice) { _directory.value = v; prefs.edit().putString("directory", v.name).apply() }
     fun setSkipBack(v: Int) { _skipBack.value = v; prefs.edit().putInt("skipBack", v).apply() }
@@ -39,6 +42,7 @@ class Settings(context: Context, private val secure: SecureStore) {
 
     fun setWifiOnlyDownloads(v: Boolean) { _wifiOnly.value = v; prefs.edit().putBoolean("wifiOnlyDownloads", v).apply() }
     fun setDeleteWhenPlayed(v: Boolean) { _deleteWhenPlayed.value = v; prefs.edit().putBoolean("deleteWhenPlayed", v).apply() }
+    fun setAutoplay(v: Boolean) { _autoplay.value = v; prefs.edit().putBoolean("autoplay", v).apply() }
 
     fun keys(): Pair<String, String>? {
         val k = secure.get("pi_key"); val s = secure.get("pi_secret")

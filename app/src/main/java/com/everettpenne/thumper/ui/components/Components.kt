@@ -185,6 +185,7 @@ fun MiniPlayer(onOpen: () -> Unit, modifier: Modifier = Modifier) {
             }
             MiniButton(if (pb.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (pb.isPlaying) "Pause" else "Play", ink, pb::toggle)
             MiniButton(Icons.Rounded.Forward30, "Skip forward", ink, pb::skipForward)
+            if (pb.hasNext) MiniButton(Icons.Rounded.SkipNext, "Next episode", ink, pb::next)
         }
         // A hairline of where you are, so the capsule also shows progress at a glance (like Apple and Spotify's mini players).
         if (fraction > 0f) Box(Modifier.align(Alignment.BottomStart).fillMaxWidth(fraction).height(3.dp).background(Thumper.accent, RoundedCornerShape(percent = 50)))

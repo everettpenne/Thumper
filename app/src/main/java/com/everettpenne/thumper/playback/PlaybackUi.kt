@@ -45,6 +45,8 @@ class PlaybackUi(private val library: Library, private val settings: Settings, p
     /** True while the playing item has a picture (a video podcast), with its width over height. */
     var hasVideo by mutableStateOf(false); private set
     var videoRatio by mutableFloatStateOf(16f / 9f); private set
+    /** True when there is a next episode to skip to (a queued item, or the next unplayed one of the same show). */
+    var hasNext by mutableStateOf(false); private set
 
     /** True when an episode is loaded (playing or paused): the mini player shows. */
     val hasEpisode: Boolean get() = episodeId != null
@@ -68,6 +70,7 @@ class PlaybackUi(private val library: Library, private val settings: Settings, p
         positionMs = p.currentPosition.coerceAtLeast(0); durationMs = p.duration.takeIf { it != C.TIME_UNSET && it > 0 } ?: durationMs
         speed = p.playbackParameters.speed
         hasVideo = p.currentTracks.containsType(C.TRACK_TYPE_VIDEO); videoRatio = com.everettpenne.media.videoAspectRatio(p)
+        hasNext = p.hasNextMediaItem()
     }
 
     /** Called about once a second while something plays (and once when a screen that shows the clock opens). */
@@ -85,8 +88,21 @@ class PlaybackUi(private val library: Library, private val settings: Settings, p
         c.prepare(); c.play()
     }
 
-    /** Skips to the next queued episode (the notification's and a headset's "next" do the same). */
-    fun next() { controller?.seekToNextMediaItem() }
+    /** Skips to the next episode: the queue's next item, or the next unplayed episode of the same show (the notification's and a headset's "next" do the same). */
+    fun next() {
+        val c = controller ?: return
+        if (c.hasNextMediaItem()) { c.seekToNextMediaItem(); return }
+        NextUp.next(episodeId, feedId, library.queue.value, library.contents.value, library.progress.value)?.let { play(it.episode, it.feed) }
+    }
+
+    /** Skips to the previous episode: restarts the current one once past a few seconds, otherwise the one before it (what just played, or the show's previous episode). */
+    fun previous() {
+        val c = controller ?: return
+        if (c.hasPreviousMediaItem()) { c.seekToPreviousMediaItem(); return }   // restart when past the threshold, else step back
+        if (c.currentPosition > NextUp.RESTART_AFTER_MS) { seekTo(0); return }
+        NextUp.previous(episodeId, feedId, library.contents.value)?.let { play(it.episode, it.feed) } ?: seekTo(0)
+    }
+
     fun toggle() { controller?.let { if (it.isPlaying) it.pause() else it.play() } }
     fun skipBack() { controller?.seekBack(); tick() }
     fun skipForward() { controller?.seekForward(); tick() }
