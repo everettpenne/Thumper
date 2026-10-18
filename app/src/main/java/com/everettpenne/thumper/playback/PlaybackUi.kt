@@ -70,6 +70,7 @@ class PlaybackUi(private val library: Library, private val settings: Settings, p
         positionMs = p.currentPosition.coerceAtLeast(0); durationMs = p.duration.takeIf { it != C.TIME_UNSET && it > 0 } ?: durationMs
         speed = p.playbackParameters.speed
         hasVideo = p.currentTracks.containsType(C.TRACK_TYPE_VIDEO); videoRatio = com.everettpenne.media.videoAspectRatio(p)
+        PiPState.videoPlaying = PiP.shouldEnter(hasVideo, isPlaying)
         hasNext = p.hasNextMediaItem()
     }
 

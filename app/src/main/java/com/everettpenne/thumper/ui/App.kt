@@ -17,6 +17,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -37,6 +38,7 @@ import com.everettpenne.thumper.ui.components.GlassTextField
 import com.everettpenne.thumper.ui.components.MiniPlayer
 import com.everettpenne.thumper.ui.components.Navigator
 import com.everettpenne.glass.*
+import com.everettpenne.media.VideoSurface
 import com.everettpenne.thumper.ui.screens.*
 import com.everettpenne.thumper.ui.theme.ThumperTheme
 import com.kyant.backdrop.backdrops.layerBackdrop
@@ -50,7 +52,7 @@ object Routes {
 }
 
 @Composable
-fun ThumperRoot(deepLink: Uri?) {
+fun ThumperRoot(deepLink: Uri?, inPictureInPicture: Boolean) {
     ThumperTheme {
         var viewer by remember { mutableStateOf<Pair<List<String>, Int>?>(null) }
         val updater = com.everettpenne.updater.Updater.get(LocalContext.current, com.everettpenne.updater.UpdateConfig("everettpenne/Thumper", com.everettpenne.thumper.BuildConfig.VERSION_NAME))
@@ -114,7 +116,7 @@ fun ThumperRoot(deepLink: Uri?) {
                         composable(Routes.QUEUE) { QueueScreen(nav, onBack = { navController.popBackStack() }) }
                         composable(Routes.SETTINGS) { SettingsScreen(nav, onBack = { navController.popBackStack() }) }
                         composable(Routes.DOWNLOADS) { DownloadsScreen(nav, onBack = { navController.popBackStack() }) }
-                        composable(Routes.PLAYER, enterTransition = { slideInVertically { it / 3 } + fadeIn() }, popExitTransition = { slideOutVertically { it / 3 } + fadeOut() }) { PlayerScreen(nav, onBack = { navController.popBackStack() }) }
+                        composable(Routes.PLAYER, enterTransition = { slideInVertically { it / 3 } + fadeIn() }, popExitTransition = { slideOutVertically { it / 3 } + fadeOut() }) { PlayerScreen(nav, onBack = { navController.popBackStack() }, inPictureInPicture = inPictureInPicture) }
                         composable("feed/{url}", listOf(navArgument("url") { type = NavType.StringType })) { e -> FeedScreen(e.arguments?.getString("url").orEmpty(), nav, onBack = { navController.popBackStack() }) }
                         composable("episode/{feedId}/{episodeId}", listOf(navArgument("feedId") { type = NavType.StringType }, navArgument("episodeId") { type = NavType.StringType })) { e ->
                             EpisodeScreen(e.arguments?.getString("feedId").orEmpty(), e.arguments?.getString("episodeId").orEmpty(), nav, onBack = { navController.popBackStack() })
@@ -123,6 +125,10 @@ fun ThumperRoot(deepLink: Uri?) {
                             ArticleScreen(e.arguments?.getString("feedId").orEmpty(), e.arguments?.getString("articleId").orEmpty(), onBack = { navController.popBackStack() })
                         }
                     }
+                }
+                // Picture-in-picture: only the video fills the small floating window; the player screen stays put underneath.
+                if (inPictureInPicture && playback.hasVideo) {
+                    playback.controller?.let { player -> Box(Modifier.fillMaxSize().background(Color.Black)) { VideoSurface(player, Modifier.fillMaxSize()) } }
                 }
             }
             viewer?.let { (urls, i) -> com.everettpenne.media.ImageViewer(urls, i) { viewer = null } }

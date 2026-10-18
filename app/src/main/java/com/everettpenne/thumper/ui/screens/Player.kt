@@ -45,7 +45,7 @@ private val SLEEP_MINUTES = listOf(5, 15, 30, 45, 60)
 
 /** The full player: big cover, the scrubber, skip and play, speed and sleep timer, and a way back to the episode's notes. */
 @Composable
-fun PlayerScreen(nav: Navigator, onBack: () -> Unit) {
+fun PlayerScreen(nav: Navigator, onBack: () -> Unit, inPictureInPicture: Boolean = false) {
     val pb = LocalPlayback.current
     val graph = LocalContext.current.graph
     val back by graph.settings.skipBackSeconds.collectAsState(); val forward by graph.settings.skipForwardSeconds.collectAsState()
@@ -55,6 +55,8 @@ fun PlayerScreen(nav: Navigator, onBack: () -> Unit) {
     var fullscreen by remember { mutableStateOf(false) }
     var speedMenu by remember { mutableStateOf(false) }; var sleepMenu by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { pb.tick() }
+    // Entering the floating window drops a full-screen video back to the inline player, so the PiP window owns the surface alone.
+    LaunchedEffect(inPictureInPicture) { if (inPictureInPicture) fullscreen = false }
     val duration = pb.durationMs.coerceAtLeast(1)
     val shown = scrub?.let { (it * duration).toLong() } ?: pb.positionMs
 
@@ -66,11 +68,11 @@ fun PlayerScreen(nav: Navigator, onBack: () -> Unit) {
             if (pb.hasVideo && video != null) {
                 // a video podcast: the picture in place of the cover, with a button to take it full screen
                 Box(Modifier.fillMaxWidth().aspectRatio(pb.videoRatio.coerceIn(.6f, 2.4f)).clip(RoundedCornerShape(20.dp)).background(androidx.compose.ui.graphics.Color.Black)) {
-                    VideoSurface(video, Modifier.fillMaxSize(), enabled = !fullscreen)
+                    VideoSurface(video, Modifier.fillMaxSize(), enabled = !fullscreen && !inPictureInPicture)
                     GlassCircleButton({ fullscreen = true }, Modifier.align(Alignment.BottomEnd).padding(10.dp).background(androidx.compose.ui.graphics.Color.Black.copy(alpha = .4f), CircleShape),
                         size = 40.dp, description = "Full screen", shadowed = false) { Icon(Icons.Rounded.Fullscreen, null, tint = androidx.compose.ui.graphics.Color.White) }
                 }
-                if (fullscreen) FullscreenVideo(video, pb.title) { fullscreen = false }
+                if (fullscreen && !inPictureInPicture) FullscreenVideo(video, pb.title) { fullscreen = false }
             } else BoxWithConstraints(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { Artwork(pb.artworkUrl, minOf(maxWidth, 320.dp), radius = 24.dp, zoomable = true) }
             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(pb.title, style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center, maxLines = 3, overflow = TextOverflow.Ellipsis)
