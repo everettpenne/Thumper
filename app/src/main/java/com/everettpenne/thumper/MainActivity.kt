@@ -35,8 +35,8 @@ class MainActivity : ComponentActivity() {
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
         // Only a playing video floats, and only once: the leave hint can fire again from inside the floating window, where re-entering would throw.
-        if (PiPState.videoPlaying && !isInPictureInPictureMode) {
-            enterPictureInPictureMode(PictureInPictureParams.Builder().setAspectRatio(Rational(16, 9)).build())
+        if (PiPState.videoPlaying) {
+            com.everettpenne.media.enterPip(this, PictureInPictureParams.Builder().setAspectRatio(com.everettpenne.media.pipRational(PiPState.videoRatio)).build())
         }
     }
 

@@ -17,4 +17,6 @@ object PiP {
  */
 object PiPState {
     @Volatile var videoPlaying: Boolean = false
+    /** Width over height of the video that is playing: the floating window takes this shape instead of always being 16:9. */
+    @Volatile var videoRatio: Float = 16f / 9f
 }
