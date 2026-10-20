@@ -43,3 +43,9 @@ adb reverse tcp:8097 tcp:8097           # the emulator then reaches it at http:/
 ## Credits
 
 Liquid glass by [Backdrop](https://github.com/Kyant0/AndroidLiquidGlass) (Apache-2.0); type is [Inter](https://github.com/rsms/inter) (SIL OFL 1.1, `docs/licenses/Inter-OFL.txt`) set to Apple's HIG scale; playback by AndroidX Media3; images by Coil. MIT licensed, see `LICENSE`.
+
+## Building with Glass
+
+The shared UI kit lives in its own repository, [Glass](https://github.com/everettpenne/Glass), checked out next to this one (`../Glass`) and built
+with it through `includeBuild`. `glass.version` names the Glass tag this app is built and released with; CI checks out exactly that tag. To
+build locally, check Glass out beside this repository at that tag (`git -C ../Glass checkout $(cat glass.version)`).

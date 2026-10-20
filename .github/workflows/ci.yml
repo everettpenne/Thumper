@@ -1,0 +1,25 @@
+name: CI
+on:
+  push:
+  pull_request:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # The app builds the shared Glass kit from ../Glass (settings.gradle.kts: includeBuild). CI checks out the Glass version this app is
+      # pinned to (glass.version) next to it, so what CI builds is what ships.
+      - name: Read the pinned Glass version
+        run: echo "GLASS_REF=$(tr -d '[:space:]' < glass.version)" >> "$GITHUB_ENV"
+      - uses: actions/checkout@v4
+        with:
+          repository: everettpenne/Glass
+          ref: ${{ env.GLASS_REF }}
+          path: glass-src
+      - name: Put Glass beside the app
+        run: mv glass-src ../Glass
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 21 }
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Unit tests, lint and debug build
+        run: ./gradlew --no-daemon :app:testDebugUnitTest :app:lintDebug :app:assembleDebug

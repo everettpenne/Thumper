@@ -32,6 +32,8 @@ class Graph(app: Context) {
     val downloads = com.everettpenne.thumper.data.Downloads(app, File(app.getExternalFilesDir(null) ?: app.filesDir, "downloads").apply { mkdirs() }, library, settings, scope)
     /** Where downloaded episodes are on this phone: the player plays these in preference to the network. */
     val localFiles: com.everettpenne.thumper.playback.LocalFiles get() = downloads
+    /** Downloads in progress as a Live Update (Android 16) or a progress notification. */
+    val downloadLiveUpdate = com.everettpenne.thumper.data.DownloadLiveUpdate(app, downloads, scope).also { it.start() }
 
     val refreshing = kotlinx.coroutines.flow.MutableStateFlow(false)
     private var lastRefresh = 0L

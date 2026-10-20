@@ -1,3 +1,6 @@
+// Media3 marks parts of its API "unstable" (they may change between versions); these are used on purpose and pinned by the version in the build.
+@file:androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+
 package com.everettpenne.thumper.playback
 
 import android.content.ComponentName

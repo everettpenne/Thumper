@@ -79,7 +79,8 @@ fun ThumperRoot(deepLink: Uri?, inPictureInPicture: Boolean) {
                 override fun openSearch() { navController.navigate(Routes.SEARCH) { popUpTo(Routes.LISTEN) { inclusive = false }; launchSingleTop = true } }
             }
         }
-        LaunchedEffect(deepLink) { deepLink?.let { addFeed = it.toString() } }
+        // The downloads Live Update opens the Downloads screen; anything else handed to Thumper is a feed to add.
+        LaunchedEffect(deepLink) { deepLink?.let { if (it.scheme == "thumper" && it.host == "downloads") nav.openDownloads() else addFeed = it.toString() } }
         LaunchedEffect(openAfterAdd) { openAfterAdd?.let { nav.openFeed(it); openAfterAdd = null } }
 
         // The first time something plays, ask to show its notification (Android 13 and newer); sound in the background works either way.

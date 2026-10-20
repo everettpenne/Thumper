@@ -51,14 +51,11 @@ fun PlayerScreen(nav: Navigator, onBack: () -> Unit, inPictureInPicture: Boolean
     val back by graph.settings.skipBackSeconds.collectAsState(); val forward by graph.settings.skipForwardSeconds.collectAsState()
     val queue by graph.library.queue.collectAsState(); val contents by graph.library.contents.collectAsState(); val progress by graph.library.progress.collectAsState()
     val nextUp = remember(pb.episodeId, pb.feedId, queue, contents, progress) { NextUp.next(pb.episodeId, pb.feedId, queue, contents, progress) }
-    var scrub by remember { mutableStateOf<Float?>(null) }
     var fullscreen by remember { mutableStateOf(false) }
     var speedMenu by remember { mutableStateOf(false) }; var sleepMenu by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { pb.tick() }
     // Entering the floating window drops a full-screen video back to the inline player, so the PiP window owns the surface alone.
     LaunchedEffect(inPictureInPicture) { if (inPictureInPicture) fullscreen = false }
-    val duration = pb.durationMs.coerceAtLeast(1)
-    val shown = scrub?.let { (it * duration).toLong() } ?: pb.positionMs
 
     GlassScreen(bars = { GlassCenteredTopBar("Now Playing", onBack, Modifier.align(Alignment.TopCenter)) }) { contentPadding ->
         if (!pb.hasEpisode) { EmptyState(Icons.Rounded.Headphones, "Nothing playing", "Start an episode and it will appear here."); return@GlassScreen }
@@ -87,24 +84,11 @@ fun PlayerScreen(nav: Navigator, onBack: () -> Unit, inPictureInPicture: Boolean
                     GlassButton("Retry", pb::retry)
                 }
             }
-            Column(Modifier.fillMaxWidth()) {
-GlassSlider(value = scrub ?: (pb.positionMs.toFloat() / duration).coerceIn(0f, 1f), onValueChange = { scrub = it },
-                    onValueChangeFinished = { scrub?.let { pb.seekTo((it * duration).toLong()) }; scrub = null }, description = "Seek")
-                Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp)) {
-                    Text(Format.clock(shown), style = IosType.caption1, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(Modifier.weight(1f)); Text("-" + Format.clock(pb.durationMs - shown), style = IosType.caption1, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-                EpisodeSkipButton(previous = true, onClick = pb::previous)
-                SkipButton(false, back, pb::skipBack)
-                GlassCircleButton(pb::toggle, size = 76.dp, tint = Thumper.accent, description = if (pb.isPlaying) "Pause" else "Play") {
-                    if (pb.buffering) CircularProgressIndicator(Modifier.size(38.dp), color = androidx.compose.ui.graphics.Color.White, strokeWidth = 3.dp)
-                    else Icon(if (pb.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, null, tint = androidx.compose.ui.graphics.Color.White, modifier = Modifier.size(44.dp))
-                }
-                SkipButton(true, forward, pb::skipForward)
-                EpisodeSkipButton(previous = false, enabled = nextUp != null, onClick = pb::next)
-            }
+            // The suite's shared player controls (Glass media): the same scrubber and transport as Spice and Seekur, with Thumper's skips either side.
+            com.everettpenne.media.PlayerScrubber(pb.positionMs, pb.durationMs, onSeek = pb::seekTo)
+            com.everettpenne.media.PlayerTransport(pb.isPlaying, pb::toggle, accent = Thumper.accent, buffering = pb.buffering, size = 76.dp,
+                start = { EpisodeSkipButton(previous = true, onClick = pb::previous); SkipButton(false, back, pb::skipBack) },
+                end = { SkipButton(true, forward, pb::skipForward); EpisodeSkipButton(previous = false, enabled = nextUp != null, onClick = pb::next) })
             nextUp?.let { entry ->
                 Text("Up next: ${entry.episode.title}", style = IosType.caption1, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis,
                     textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().clickable { pb.next() }.padding(vertical = 4.dp))

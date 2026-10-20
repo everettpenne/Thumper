@@ -6,7 +6,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.net.Uri
-import android.os.Build
 import com.everettpenne.thumper.data.model.*
 import com.everettpenne.thumper.playback.LocalFiles
 import kotlinx.coroutines.*
@@ -27,7 +26,8 @@ data class DownloadInfo(val status: DownloadStatus, val bytes: Long = 0, val tot
 
 /**
  * Episodes saved to the phone for listening without a network. The transfer is Android's DownloadManager's (it resumes after a lost connection, follows
- * redirects, waits for Wi-Fi if asked, and shows its progress notification); this keeps track of which download is which episode, learns how each is
+ * redirects, waits for Wi-Fi if asked); its own notification is hidden in favour of Thumper's one Live Update for all downloads
+ * ([DownloadLiveUpdate]); this keeps track of which download is which episode, learns how each is
  * getting on, and tells the player where the file is. Downloads live in the app's own storage and go when the app is uninstalled.
  */
 class Downloads(
@@ -49,7 +49,8 @@ class Downloads(
     init {
         val done = object : BroadcastReceiver() { override fun onReceive(c: Context, i: Intent) { scope.launch { refresh() } } }
         val filter = IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE)
-        if (Build.VERSION.SDK_INT >= 33) context.registerReceiver(done, filter, Context.RECEIVER_EXPORTED) else context.registerReceiver(done, filter)
+        // Exported: the completion broadcast comes from the system's download provider, another app.
+        androidx.core.content.ContextCompat.registerReceiver(context, done, filter, androidx.core.content.ContextCompat.RECEIVER_EXPORTED)
         scope.launch { refresh() }
         // Auto-download: new episodes of shows that ask for it; and "delete after playing"
         scope.launch { library.newEpisodes.collect { (feed, episodes) -> if (feed.autoDownload) episodes.take(MAX_AUTO).forEach { download(it, feed) } } }
@@ -68,7 +69,7 @@ class Downloads(
         val wifiOnly = settings.wifiOnlyDownloads.value
         val request = DownloadManager.Request(Uri.parse(episode.audioUrl))
             .setTitle(episode.title).setDescription(feed.title).addRequestHeader("User-Agent", "Thumper/0.1 (Android podcast and feed reader)")
-            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE).setDestinationUri(Uri.fromFile(File(filesDir, name)))
+            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_HIDDEN).setDestinationUri(Uri.fromFile(File(filesDir, name)))
             .setAllowedOverMetered(!wifiOnly).setAllowedOverRoaming(!wifiOnly)
         val id = manager.enqueue(request)
         _records.update { it + DownloadRecord(episode.copy(summaryHtml = episode.summaryHtml.take(Library.MAX_NOTES)), feed, id, name, clock()) }
