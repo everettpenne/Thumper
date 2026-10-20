@@ -62,12 +62,34 @@ class FeedFetcher(private val client: OkHttpClient, private val userAgent: Strin
         if (fetched.code !in 200..299) return ApiResult.Failed(Failure.BAD_RESPONSE, "HTTP ${fetched.code}")
         return try {
             // the feed's address is the one asked for (not where a redirect ended), so a subscription stays the same subscription
-            val content = FeedParser.parse(ByteArrayInputStream(fetched.body), url, now)
+            val parsed = FeedParser.parse(ByteArrayInputStream(fetched.body), url, now)
+            // A reading feed gets its site's icon as its logo, looked up once (on the first fetch) and kept from then on.
+            val icon = previous?.feed?.iconUrl ?: if (parsed.feed.kind == com.everettpenne.thumper.data.model.FeedKind.ARTICLES) siteIcon(parsed.feed.siteUrl ?: url, http) else null
+            val content = parsed.copy(feed = parsed.feed.copy(iconUrl = icon))
             ApiResult.Ok(FeedFetch.Updated(content.copy(etag = fetched.etag, lastModified = fetched.lastModified)))
         } catch (e: Exception) {
             val alt = if (followDiscovery) discover(String(fetched.body, Charsets.UTF_8).take(400_000), fetched.finalUrl) else null
             if (alt != null && alt != url) fetchInternal(alt, null, now, followDiscovery = false) else ApiResult.Failed(Failure.NOT_A_FEED, e.message)
         }
+    }
+
+    /**
+     * The icon a site advertises on its home page (its apple-touch-icon, else its largest declared icon), or its /favicon.ico. Best effort: quick
+     * timeouts, a small read, and any failure just means the list shows the feed's monogram instead.
+     */
+    private suspend fun siteIcon(siteUrl: String, http: OkHttpClient): String? {
+        val home = siteUrl.toHttpUrlOrNull()?.let { u -> u.newBuilder().encodedPath("/").query(null).fragment(null).build() } ?: return null
+        val fallback = home.resolve("/favicon.ico")?.toString()
+        val quick = http.newBuilder().connectTimeout(5, java.util.concurrent.TimeUnit.SECONDS).readTimeout(6, java.util.concurrent.TimeUnit.SECONDS).build()
+        return try {
+            runInterruptible(Dispatchers.IO) {
+                quick.newCall(Request.Builder().url(home).header("User-Agent", userAgent).header("Accept", "text/html").build()).execute().use { r ->
+                    if (!r.isSuccessful) return@use fallback
+                    val head = r.body?.source()?.let { src -> src.request(200_000); src.buffer.snapshot().utf8().take(200_000) }.orEmpty()
+                    discoverIcon(head, r.request.url.toString()) ?: fallback
+                }
+            }
+        } catch (_: Exception) { fallback }
     }
 
     private class Raw(val code: Int, val body: ByteArray, val etag: String?, val lastModified: String?, val finalUrl: String)
@@ -92,6 +114,26 @@ class FeedFetcher(private val client: OkHttpClient, private val userAgent: Strin
         }
 
         private val LINK = Regex("""<link\b[^>]*>""", RegexOption.IGNORE_CASE)
+
+        /** A page's best icon for a small square logo: apple-touch-icon first (large and square), then the largest declared icon; SVG is passed over. */
+        fun discoverIcon(html: String, baseUrl: String): String? {
+            val found = LINK.findAll(html).mapNotNull { m ->
+                val tag = m.value
+                val rel = Regex("""\brel\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))""", RegexOption.IGNORE_CASE).find(tag)?.let { it.groupValues[1].ifEmpty { it.groupValues[2].ifEmpty { it.groupValues[3] } } }?.lowercase() ?: return@mapNotNull null
+                val href = Regex("""\bhref\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))""", RegexOption.IGNORE_CASE).find(tag)?.let { it.groupValues[1].ifEmpty { it.groupValues[2].ifEmpty { it.groupValues[3] } } } ?: return@mapNotNull null
+                if (href.isBlank() || href.lowercase().substringBefore('?').endsWith(".svg") || tag.contains("image/svg", true)) return@mapNotNull null
+                val words = rel.split(' ')
+                val size = Regex("""\bsizes\s*=\s*["']?(\d+)x\d+""", RegexOption.IGNORE_CASE).find(tag)?.groupValues?.get(1)?.toIntOrNull() ?: 0
+                val score = when {
+                    "apple-touch-icon" in words || "apple-touch-icon-precomposed" in words -> 10_000 + size
+                    "icon" in words -> size
+                    else -> return@mapNotNull null
+                }
+                href to score
+            }.toList()
+            val best = found.maxByOrNull { it.second } ?: return null
+            return runCatching { URI(baseUrl).resolve(com.everettpenne.thumper.util.Html.decode(best.first).trim()).toString() }.getOrNull()
+        }
 
         /** The first feed a web page advertises (RSS preferred over Atom, as in the page's own order), as an absolute address; null if none. */
         fun discover(html: String, baseUrl: String): String? {

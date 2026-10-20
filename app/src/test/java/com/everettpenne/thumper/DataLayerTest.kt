@@ -83,6 +83,10 @@ class DataLayerTest {
         assertEquals("http://x.example/f", FeedFetcher.normalizeUrl("http://x.example/f"))
         assertEquals("https://x.example/feed?a=1&b=2", FeedFetcher.discover("""<link href='/feed?a=1&amp;b=2' rel='alternate' type='application/rss+xml'>""", "https://x.example/page"))
         assertNull(FeedFetcher.discover("<html>no links</html>", "https://x.example"))
+        // a site's logo: the touch icon wins over smaller icons, SVG is passed over, and addresses are made absolute
+        assertEquals("https://x.example/apple.png", FeedFetcher.discoverIcon("""<link rel="icon" href="/f.ico" sizes="32x32"><link rel="apple-touch-icon" href="/apple.png"><link rel="icon" href="/i.svg">""", "https://x.example/"))
+        assertEquals("https://x.example/big.png", FeedFetcher.discoverIcon("""<link rel="icon" href="/small.png" sizes="16x16"><link rel="shortcut icon" href="big.png" sizes="192x192">""", "https://x.example/"))
+        assertNull(FeedFetcher.discoverIcon("<link rel=\"stylesheet\" href=\"/a.css\">", "https://x.example/"))
     }
 
     @Test fun `a bare address falls back to plain http when https does not answer`() = runBlocking {

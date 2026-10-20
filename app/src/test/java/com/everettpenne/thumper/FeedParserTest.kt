@@ -88,4 +88,39 @@ class FeedParserTest {
         assertEquals(1_790_848_800_000L, FeedParser.parseDate("2026-10-01T12:00:00+02:00"))
         assertEquals(0L, FeedParser.parseDate("nonsense")); assertEquals(0L, FeedParser.parseDate(null))
     }
+
+    @Test fun `a post with no headline gets one from its text`() {
+        val xml = """<rss version="2.0"><channel><title>Social</title>
+            <item><guid>1</guid><description>&lt;p&gt;Shipped a new release today. It fixes the camera bug and more.&lt;/p&gt;</description></item>
+            <item><guid>2</guid><description>&lt;p&gt;short&lt;/p&gt;</description></item>
+            <item><guid>3</guid><description>&lt;img src="https://x.example/a.jpg"&gt;</description></item>
+            </channel></rss>"""
+        val a = FeedParser.parse(xml.byteInputStream(), "https://social.example/@me.rss").articles.associateBy { it.id.let { _ -> it.contentHtml.length } }.values.toList()
+        val titles = a.map { it.title }.toSet()
+        assertTrue(titles.toString(), "Shipped a new release today." in titles)
+        assertTrue(titles.toString(), "short" in titles)
+        assertTrue(titles.toString(), "Untitled" in titles)
+    }
+
+    @Test fun `a long headline made from text is cut at a word`() {
+        val t = FeedParser.titleFrom("<p>" + "word ".repeat(40) + "</p>")
+        assertTrue(t, t.endsWith("…") && t.length <= 91 && !t.contains("wor…"))
+    }
+
+    @Test fun `the first real picture in the text is the thumbnail`() {
+        val html = """<img width="1" height="1" src="https://feeds.feedburner.com/~r/x.gif"><p>Hi</p><img src='/images/lead.jpg' width="600">"""
+        assertEquals("https://blog.example/images/lead.jpg", FeedParser.firstImage(html, "https://blog.example/post/1"))
+        assertNull(FeedParser.firstImage("<p>no pictures</p>", "https://blog.example/"))
+    }
+
+    @Test fun `a YouTube feed has thumbnails and descriptions from its media group`() {
+        val xml = """<feed xmlns="http://www.w3.org/2005/Atom" xmlns:media="http://search.yahoo.com/mrss/"><title>Channel</title>
+            <entry><id>yt:video:abc</id><title>A video</title><link rel="alternate" href="https://www.youtube.com/watch?v=abc"/>
+            <media:group><media:title>A video</media:title><media:thumbnail url="https://i1.ytimg.com/vi/abc/hqdefault.jpg" width="480" height="360"/>
+            <media:description>What it is about.</media:description></media:group></entry></feed>"""
+        val a = FeedParser.parse(xml.byteInputStream(), "https://www.youtube.com/feeds/videos.xml?channel_id=x").articles.single()
+        assertEquals("https://i1.ytimg.com/vi/abc/hqdefault.jpg", a.imageUrl)
+        assertEquals("What it is about.", a.contentHtml)
+        assertEquals("A video", a.title)
+    }
 }

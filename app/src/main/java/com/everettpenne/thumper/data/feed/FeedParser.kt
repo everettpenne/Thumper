@@ -1,6 +1,7 @@
 package com.everettpenne.thumper.data.feed
 
 import com.everettpenne.thumper.data.model.*
+import com.everettpenne.thumper.util.Html
 import org.xmlpull.v1.XmlPullParser
 import org.xmlpull.v1.XmlPullParserFactory
 import java.io.InputStream
@@ -68,9 +69,12 @@ object FeedParser {
                 id = stableId("$id|$key"), feedId = id, title = item.title.ifBlank { "Untitled episode" }, audioUrl = item.audioUrl!!, publishedAt = published,
                 durationSec = parseDuration(item.duration), summaryHtml = item.content.ifBlank { item.description.ifBlank { item.summary } }, imageUrl = item.image,
                 link = item.link, mimeType = item.audioType, season = item.season, number = item.number)
-            else articles += Article(
-                id = stableId("$id|$key"), feedId = id, title = item.title.ifBlank { "Untitled" }, contentHtml = item.content.ifBlank { item.description.ifBlank { item.summary } },
-                link = item.link, publishedAt = published, imageUrl = item.image ?: item.imageEnclosure, author = item.author)
+            else {
+                val body = item.content.ifBlank { item.description.ifBlank { item.summary } }
+                articles += Article(
+                    id = stableId("$id|$key"), feedId = id, title = item.title.ifBlank { titleFrom(body) }, contentHtml = body,
+                    link = item.link, publishedAt = published, imageUrl = item.image ?: item.imageEnclosure ?: firstImage(body, item.link ?: feedUrl), author = item.author)
+            }
         }
         val kind = if (episodes.isNotEmpty() && episodes.size * 2 >= items.size) FeedKind.PODCAST else FeedKind.ARTICLES
         val feed = Feed(id = id, url = feedUrl, title = title.ifBlank { feedUrl }, author = author, description = description, imageUrl = image, siteUrl = site, kind = kind, addedAt = now)
@@ -95,7 +99,9 @@ object FeedParser {
                 }
                 "guid", "id" -> it.guid = text(p).trim().ifEmpty { null }
                 "pubDate", "published", "updated", "dc:date" -> { val t = text(p).trim(); if (it.date == null || n == "pubDate" || n == "published") it.date = t }
-                "description" -> it.description = text(p)
+                "description", "media:description" -> { val t = text(p); if (n == "description" || it.description.isEmpty()) it.description = t }
+                // YouTube (and other Media RSS feeds) wrap the thumbnail and the description in a group: read inside it rather than skip it
+                "media:group" -> Unit
                 "summary", "itunes:summary" -> { val t = text(p); if (it.summary.isEmpty()) it.summary = t }
                 "content:encoded", "content" -> it.content = text(p)
                 "itunes:duration" -> it.duration = text(p).trim()
@@ -114,6 +120,37 @@ object FeedParser {
             }
         }
         return it
+    }
+
+    /**
+     * A headline for a post that has none (Mastodon, micro.blog, Bluesky bridges and other short-form feeds send only the text): its first sentence,
+     * or the start of its text, kept short enough for a list row. "Untitled" only when the post has no text at all (a bare picture).
+     */
+    internal fun titleFrom(html: String, maxChars: Int = 90): String {
+        val flat = Html.plain(html).replace(Regex("\\s+"), " ").trim()
+        if (flat.isEmpty()) return "Untitled"
+        val sentence = Regex("""^(.+?[.!?…])(\s|$)""").find(flat)?.groupValues?.get(1)?.takeIf { it.length >= 12 } ?: flat
+        if (sentence.length <= maxChars) return sentence
+        val cut = sentence.substring(0, maxChars); val space = cut.lastIndexOf(' ')
+        return (if (space > maxChars / 2) cut.substring(0, space) else cut).trimEnd(',', ';', ':', ' ') + "…"
+    }
+
+    private val IMG = Regex("""<img\b[^>]*>""", RegexOption.IGNORE_CASE)
+    private val SRC = Regex("""\bsrc\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))""", RegexOption.IGNORE_CASE)
+    private val TINY = Regex("""\b(width|height)\s*=\s*["']?[0-3]["'\s>/]""", RegexOption.IGNORE_CASE)
+
+    /** The first real picture in a post's HTML, for its thumbnail: tracking pixels (1x1, feedburner, stats counters) and emoji are passed over. */
+    internal fun firstImage(html: String, base: String): String? {
+        for (m in IMG.findAll(html)) {
+            val tag = m.value
+            if (TINY.containsMatchIn(tag)) continue
+            val src = SRC.find(tag)?.let { it.groupValues[1].ifEmpty { it.groupValues[2].ifEmpty { it.groupValues[3] } } }?.let(Html::decode)?.trim() ?: continue
+            if (src.isEmpty() || src.startsWith("data:")) continue
+            val lower = src.lowercase()
+            if (listOf("feedburner", "/stats", "pixel", "tracker", "emoji", "gravatar.com/avatar", "/smilies/").any { it in lower }) continue
+            return resolve(base, src)
+        }
+        return null
     }
 
     private val AUDIO_EXT = Regex("""\.(mp3|m4a|aac|ogg|oga|opus|wav|flac|mp4|m4b)(\?|#|$)""", RegexOption.IGNORE_CASE)

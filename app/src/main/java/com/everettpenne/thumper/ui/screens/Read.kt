@@ -34,20 +34,29 @@ import com.everettpenne.thumper.ui.theme.Thumper
 import com.everettpenne.thumper.util.Format
 import kotlinx.coroutines.launch
 
-/** One article in a list: its title, where it is from and when, the start of its text, and its picture. Unread ones are bold with an accent dot. */
+/**
+ * One article in a list: where it is from (the feed's logo and name) and when, its headline, the start of its text, and its picture when it has one.
+ * Unread ones are bold with an accent dot.
+ */
 @Composable
 fun ArticleRow(article: Article, feed: Feed, read: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val snippet = remember(article.id) { Format.snippet(article.contentHtml) }
-    Row(modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
+    // a post whose headline was made from its text would only repeat it as the snippet
+    val showSnippet = snippet.isNotEmpty() && !snippet.startsWith(article.title.removeSuffix("…"))
+    Row(modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
         // A quiet leading gutter holds the unread dot, so read and unread rows keep their titles on the same line.
-        Box(Modifier.padding(top = 7.dp).size(8.dp)) { if (!read) Box(Modifier.fillMaxSize().background(Thumper.accent, CircleShape)) }
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        Box(Modifier.padding(top = 6.dp).size(8.dp)) { if (!read) Box(Modifier.fillMaxSize().background(Thumper.accent, CircleShape)) }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                FeedLogo(feed, 18.dp)
+                Text(listOf(feed.title, Format.relativeDate(article.publishedAt)).filter { it.isNotEmpty() }.joinToString("  ·  "), style = IosType.footnote,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
             Text(article.title, style = MaterialTheme.typography.titleMedium.copy(fontWeight = if (read) FontWeight.Normal else FontWeight.SemiBold), maxLines = 3, overflow = TextOverflow.Ellipsis,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = if (read) .6f else 1f))
-            Text(listOf(feed.title, Format.relativeDate(article.publishedAt)).filter { it.isNotEmpty() }.joinToString("  ·  "), style = IosType.footnote, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            if (snippet.isNotEmpty()) Text(snippet, style = IosType.footnote, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            if (showSnippet) Text(snippet, style = IosType.footnote, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
-        if (article.imageUrl != null) Artwork(article.imageUrl, 96.dp, radius = 10.dp, placeholder = Icons.Rounded.Article, aspectRatio = 4f / 3f)
+        if (article.imageUrl != null) Artwork(article.imageUrl, 88.dp, Modifier.padding(top = 2.dp), radius = 10.dp, placeholder = Icons.Rounded.Article, aspectRatio = 1f)
     }
 }
 
@@ -80,7 +89,7 @@ fun ReadScreen(nav: Navigator) {
                 if (readingFeeds.size > 1) item {
                     LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         item { GlassChip(only == null, { only = null }) { Text("All") } }
-                        items(readingFeeds, key = { it.id }) { f -> GlassChip(only == f.id, { only = f.id }) { Text(f.title, maxLines = 1) } }
+                        items(readingFeeds, key = { it.id }) { f -> GlassChip(only == f.id, { only = f.id }) { Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) { FeedLogo(f, 18.dp); Text(f.title, maxLines = 1) } } }
                     }
                     Spacer(Modifier.height(6.dp))
                 }

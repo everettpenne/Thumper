@@ -22,7 +22,12 @@ val ThumperJson = Json { ignoreUnknownKeys = true; isLenient = true; coerceInput
     val addedAt: Long = 0,
     /** Download this show's new episodes as they arrive (on the next refresh while the app is open). */
     val autoDownload: Boolean = false,
-)
+    /** The site's own small square icon (its touch icon or favicon), found from its home page: the logo beside its articles. */
+    val iconUrl: String? = null,
+) {
+    /** What to show as this feed's logo in a list: the site's icon when known (square, made for small sizes), else the feed's own picture. */
+    val logoUrl: String? get() = iconUrl ?: imageUrl
+}
 
 /** One episode of a podcast: what to play and what to show. [summaryHtml] is the show notes as the publisher wrote them (HTML). */
 @Serializable data class Episode(

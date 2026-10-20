@@ -41,6 +41,7 @@ import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.everettpenne.thumper.data.model.Episode
 import com.everettpenne.thumper.data.model.Feed
@@ -62,6 +63,19 @@ fun Artwork(url: String?, size: Dp, modifier: Modifier = Modifier, radius: Dp = 
         .then(if (zoomable && url != null) Modifier.clickable { openImages(listOf(url), 0) } else Modifier), contentAlignment = Alignment.Center) {
         Icon(placeholder, null, tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = .35f), modifier = Modifier.size(minOf(size, height) * .4f))
         if (url != null) AsyncImage(url, null, Modifier.matchParentSize(), contentScale = ContentScale.Crop)
+    }
+}
+
+/**
+ * A feed's logo at a small size: the site's icon (or the feed's picture), drawn over a monogram of its first letter on a tint of the app's accent,
+ * so a feed with no icon, or one that fails to load, still has a recognisable mark.
+ */
+@Composable
+fun FeedLogo(feed: Feed, size: Dp, modifier: Modifier = Modifier) {
+    val letter = feed.title.trim().firstOrNull { it.isLetterOrDigit() }?.uppercaseChar()?.toString() ?: "•"
+    Box(modifier.size(size).clip(RoundedCornerShape(size * .24f)).background(Thumper.accent.copy(alpha = .16f)), contentAlignment = Alignment.Center) {
+        Text(letter, color = Thumper.accent, style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold, fontSize = (size.value * .5f).sp))
+        if (feed.logoUrl != null) AsyncImage(feed.logoUrl, null, Modifier.matchParentSize(), contentScale = ContentScale.Crop)
     }
 }
 

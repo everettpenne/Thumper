@@ -108,7 +108,7 @@ class Library(
             is ApiResult.Ok -> when (val f = r.value) {
                 FeedFetch.Unchanged -> { previous?.let { store(it.copy(fetchedAt = clock())) }; ApiResult.Ok(false) }
                 is FeedFetch.Updated -> {
-                    val stored = trim(f.content).let { it.copy(feed = it.feed.copy(addedAt = feed.addedAt, autoDownload = feed.autoDownload)) }
+                    val stored = trim(f.content).let { it.copy(feed = it.feed.copy(addedAt = feed.addedAt, autoDownload = feed.autoDownload, iconUrl = it.feed.iconUrl ?: previous?.feed?.iconUrl ?: feed.iconUrl)) }
                     store(stored)
                     if (previous != null) {                         // not the first fetch: whatever is now there that was not before is new
                         val seen = previous.episodes.map { it.id }.toSet()
