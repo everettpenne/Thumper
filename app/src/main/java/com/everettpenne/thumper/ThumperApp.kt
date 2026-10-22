@@ -26,6 +26,8 @@ class Graph(app: Context) {
     val http: OkHttpClient = OkHttpClient.Builder().connectTimeout(15, TimeUnit.SECONDS).readTimeout(40, TimeUnit.SECONDS).build()
     val settings = Settings(app, SecureStore(app))
     val fetcher = FeedFetcher(http)
+    /** Full text for feeds that send only a teaser (see FullText). */
+    val fullText = com.everettpenne.thumper.data.FullText(http, app.cacheDir)
     /** Work that outlives a screen: refreshing, saving. */
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     val library = Library(File(app.filesDir, "library"), fetcher, scope)

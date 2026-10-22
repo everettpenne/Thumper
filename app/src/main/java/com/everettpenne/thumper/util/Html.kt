@@ -46,7 +46,11 @@ object Html {
     private fun attr(attrs: String, name: String): String? =
         Regex("""\b$name\s*=\s*("([^"]*)"|'([^']*)'|([^\s"'>]+))""", RegexOption.IGNORE_CASE).find(attrs)?.let { m -> decode(m.groups[2]?.value ?: m.groups[3]?.value ?: m.groups[4]?.value ?: "") }
 
-    fun blocks(html: String): List<Block> {
+    /** [base] is the page the HTML came from: relative links and pictures (common in feeds) are resolved against it. */
+    fun blocks(html: String, base: String? = null): List<Block> {
+        val baseUri = base?.let { runCatching { java.net.URI(it) }.getOrNull() }
+        fun resolve(u: String): String = if (baseUri == null || u.contains("://") || u.startsWith("mailto:") || u.startsWith("tel:")) u
+            else runCatching { baseUri.resolve(u.replace(" ", "%20")).toString() }.getOrDefault(u)
         val out = ArrayList<Block>(); val runs = ArrayList<Run>()
         var bold = 0; var italic = 0; var code = 0; var href: String? = null; var quote = 0; var pre = 0; var heading = 0; var dropping: String? = null
         val lists = ArrayList<IntArray>(); var pendingMarker: String? = null; val preText = StringBuilder()
@@ -85,7 +89,7 @@ object Html {
                 "b", "strong" -> bold = (bold + if (closing) -1 else 1).coerceAtLeast(0)
                 "i", "em", "cite" -> italic = (italic + if (closing) -1 else 1).coerceAtLeast(0)
                 "code", "kbd", "tt" -> code = (code + if (closing) -1 else 1).coerceAtLeast(0)
-                "a" -> href = if (closing) null else attr(attrs, "href")
+                "a" -> href = if (closing) null else attr(attrs, "href")?.let(::resolve)
                 "h1", "h2", "h3", "h4", "h5", "h6" -> heading = if (closing) 0 else tag[1] - '0'
                 "blockquote" -> quote = (quote + if (closing) -1 else 1).coerceAtLeast(0)
                 "ul", "ol" -> if (closing) { if (lists.isNotEmpty()) lists.removeAt(lists.lastIndex) } else lists += intArrayOf(if (tag == "ol") 1 else 0)
@@ -93,7 +97,7 @@ object Html {
                 "pre" -> if (closing) { pre = 0; val t = preText.toString().trim('\n'); preText.clear(); if (t.isNotBlank()) out += Block.Code(t) } else { pre = 1; preText.clear() }
                 "hr" -> out += Block.Rule
                 "br" -> if (pre > 0) preText.append('\n') else flush()
-                "img" -> if (!closing) attr(attrs, "src")?.takeIf { it.isNotBlank() && !it.startsWith("data:") }?.let { flush(); out += Block.Image(it, attr(attrs, "alt").orEmpty()) }
+                "img" -> if (!closing) attr(attrs, "src")?.takeIf { it.isNotBlank() && !it.startsWith("data:") }?.let { flush(); out += Block.Image(resolve(it), attr(attrs, "alt").orEmpty()) }
             }
         }
         text(html.substring(pos)); flush()

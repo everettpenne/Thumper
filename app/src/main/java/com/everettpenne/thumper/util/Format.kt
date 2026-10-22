@@ -6,6 +6,33 @@ import java.util.Locale
 
 object Format {
     /** "Just now", "5 min ago", "2 hr ago", "Yesterday", "3 days ago", then "Oct 5" (and the year when it isn't this one). Nothing for an unknown date. */
+    /** The Read tab's section for an article: Today, Yesterday, This Week, Earlier, or Undated, by calendar day in [zone]. */
+    fun daySection(millis: Long, now: Long = System.currentTimeMillis(), zone: java.util.TimeZone = java.util.TimeZone.getDefault()): String {
+        if (millis <= 0) return "Undated"
+        fun day(t: Long) = java.util.Calendar.getInstance(zone).apply { timeInMillis = t; set(java.util.Calendar.HOUR_OF_DAY, 0); set(java.util.Calendar.MINUTE, 0); set(java.util.Calendar.SECOND, 0); set(java.util.Calendar.MILLISECOND, 0) }.timeInMillis
+        val days = ((day(now) - day(millis)) / 86_400_000L).toInt()
+        return when { days <= 0 -> "Today"; days == 1 -> "Yesterday"; days < 7 -> "This Week"; else -> "Earlier" }
+    }
+
+    /**
+     * When the episode will end, as a clock time ("Ends 9:42 PM"), given what is left of it and the playback speed: at 1.5× an hour takes forty
+     * minutes. Empty when the length is not known.
+     */
+    fun endsAt(positionMs: Long, durationMs: Long, speed: Float, now: Long = System.currentTimeMillis(), locale: Locale = Locale.getDefault(),
+               zone: java.util.TimeZone = java.util.TimeZone.getDefault()): String {
+        if (durationMs <= 0 || positionMs >= durationMs) return ""
+        val left = ((durationMs - positionMs) / speed.coerceAtLeast(.1f)).toLong()
+        val clock = java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT, locale).apply { timeZone = zone }
+        return "Ends " + clock.format(Date(now + left))
+    }
+
+    /** What is left, at the playback speed, as "-12:34" (or "-1:02:03"). */
+    fun remaining(positionMs: Long, durationMs: Long, speed: Float): String {
+        if (durationMs <= 0) return ""
+        val s = ((durationMs - positionMs).coerceAtLeast(0) / speed.coerceAtLeast(.1f) / 1000).toLong()
+        return "-" + if (s >= 3600) "%d:%02d:%02d".format(s / 3600, s / 60 % 60, s % 60) else "%d:%02d".format(s / 60, s % 60)
+    }
+
     fun relativeDate(millis: Long, now: Long = System.currentTimeMillis()): String {
         if (millis <= 0) return ""
         val diff = now - millis

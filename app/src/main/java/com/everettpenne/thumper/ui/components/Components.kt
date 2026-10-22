@@ -213,8 +213,11 @@ private fun MiniButton(icon: ImageVector, description: String, tint: Color, onCl
 
 /** Show notes and article bodies: the blocks of [Html.blocks] drawn as text, with links you can tap, pictures, lists, quotes and code. */
 @Composable
-fun RichText(html: String, modifier: Modifier = Modifier) {
-    val blocks = androidx.compose.runtime.remember(html) { Html.blocks(html) }
+fun RichText(html: String, modifier: Modifier = Modifier, base: String? = null, scale: Float = 1f) {
+    val blocks = androidx.compose.runtime.remember(html, base) { Html.blocks(html, base) }
+    // The reader's text size: every style grows or shrinks together, and so does the line spacing.
+    fun androidx.compose.ui.text.TextStyle.sized() = if (scale == 1f) this else copy(fontSize = fontSize * scale, lineHeight = lineHeight * scale)
+    val body = MaterialTheme.typography.bodyLarge.sized()
     val link = TextLinkStyles(SpanStyle(color = Thumper.accent, textDecoration = TextDecoration.Underline))
     fun annotated(runs: List<Html.Run>) = buildAnnotatedString {
         for (r in runs) {
@@ -226,14 +229,14 @@ fun RichText(html: String, modifier: Modifier = Modifier) {
         val openImages = LocalImageViewer.current
         val pictures = blocks.filterIsInstance<Html.Block.Image>().map { it.url }
         for (b in blocks) when (b) {
-            is Html.Block.Paragraph -> Text(annotated(b.runs), style = MaterialTheme.typography.bodyLarge)
-            is Html.Block.Heading -> Text(annotated(b.runs), Modifier.padding(top = if (b.level <= 2) 8.dp else 4.dp), style = if (b.level <= 2) MaterialTheme.typography.titleLarge else MaterialTheme.typography.titleMedium)
-            is Html.Block.ListItem -> Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { Text(b.marker, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(annotated(b.runs), style = MaterialTheme.typography.bodyLarge) }
+            is Html.Block.Paragraph -> Text(annotated(b.runs), style = body)
+            is Html.Block.Heading -> Text(annotated(b.runs), Modifier.padding(top = if (b.level <= 2) 8.dp else 4.dp), style = if (b.level <= 2) MaterialTheme.typography.titleLarge.sized() else MaterialTheme.typography.titleMedium.sized())
+            is Html.Block.ListItem -> Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { Text(b.marker, style = body, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(annotated(b.runs), style = body) }
             is Html.Block.Quote -> Row(Modifier.height(androidx.compose.foundation.layout.IntrinsicSize.Min)) {
                 Box(Modifier.width(3.dp).fillMaxHeight().background(Thumper.accent.copy(alpha = .6f), RoundedCornerShape(2.dp)))
-                Text(annotated(b.runs), Modifier.padding(start = 12.dp), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .8f))
+                Text(annotated(b.runs), Modifier.padding(start = 12.dp), style = body, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .8f))
             }
-            is Html.Block.Code -> Text(b.text, Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(10.dp)).padding(10.dp), style = IosType.footnote.copy(fontFamily = FontFamily.Monospace))
+            is Html.Block.Code -> Text(b.text, Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(10.dp)).padding(10.dp), style = IosType.footnote.sized().copy(fontFamily = FontFamily.Monospace))
             is Html.Block.Image -> AsyncImage(b.url, b.alt, Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { openImages(pictures, pictures.indexOf(b.url).coerceAtLeast(0)) }, contentScale = ContentScale.FillWidth)
             Html.Block.Rule -> Box(Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.outlineVariant))
         }

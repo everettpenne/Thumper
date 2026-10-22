@@ -20,6 +20,9 @@ class Settings(context: Context, private val secure: SecureStore) {
     private val _wifiOnly = MutableStateFlow(prefs.getBoolean("wifiOnlyDownloads", true))
     private val _deleteWhenPlayed = MutableStateFlow(prefs.getBoolean("deleteWhenPlayed", false))
     private val _autoplay = MutableStateFlow(prefs.getBoolean("autoplay", true))
+    private val _linksInApp = MutableStateFlow(prefs.getBoolean("linksInApp", true))
+    private val _readerScale = MutableStateFlow(prefs.getFloat("readerScale", 1f))
+    private val _fullArticles = MutableStateFlow(prefs.getBoolean("fullArticles", true))
 
     /** Which directory the Search tab asks. Apple's needs nothing; Podcast Index needs the key and secret below. */
     val directory: StateFlow<DirectoryChoice> = _directory.asStateFlow()
@@ -34,6 +37,12 @@ class Settings(context: Context, private val secure: SecureStore) {
     val deleteWhenPlayed: StateFlow<Boolean> = _deleteWhenPlayed.asStateFlow()
     /** When an episode ends, play the next one (Up Next, or the next unplayed episode of the same show) by itself. On by default. */
     val autoplay: StateFlow<Boolean> = _autoplay.asStateFlow()
+    /** Open links in the suite's built-in browser over the app (on by default), or in Vanadium or the phone's browser. */
+    val linksInApp: StateFlow<Boolean> = _linksInApp.asStateFlow()
+    /** The reader's text size, as a factor of the normal size (0.85 to 1.5). */
+    val readerScale: StateFlow<Float> = _readerScale.asStateFlow()
+    /** When a feed sends only a teaser, fetch the article from its page and show the whole text. */
+    val fullArticles: StateFlow<Boolean> = _fullArticles.asStateFlow()
 
     fun setDirectory(v: DirectoryChoice) { _directory.value = v; prefs.edit().putString("directory", v.name).apply() }
     fun setSkipBack(v: Int) { _skipBack.value = v; prefs.edit().putInt("skipBack", v).apply() }
@@ -43,6 +52,9 @@ class Settings(context: Context, private val secure: SecureStore) {
     fun setWifiOnlyDownloads(v: Boolean) { _wifiOnly.value = v; prefs.edit().putBoolean("wifiOnlyDownloads", v).apply() }
     fun setDeleteWhenPlayed(v: Boolean) { _deleteWhenPlayed.value = v; prefs.edit().putBoolean("deleteWhenPlayed", v).apply() }
     fun setAutoplay(v: Boolean) { _autoplay.value = v; prefs.edit().putBoolean("autoplay", v).apply() }
+    fun setLinksInApp(v: Boolean) { _linksInApp.value = v; prefs.edit().putBoolean("linksInApp", v).apply() }
+    fun setReaderScale(v: Float) { val c = v.coerceIn(.85f, 1.5f); _readerScale.value = c; prefs.edit().putFloat("readerScale", c).apply() }
+    fun setFullArticles(v: Boolean) { _fullArticles.value = v; prefs.edit().putBoolean("fullArticles", v).apply() }
 
     fun keys(): Pair<String, String>? {
         val k = secure.get("pi_key"); val s = secure.get("pi_secret")

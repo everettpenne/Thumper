@@ -45,6 +45,8 @@ class PlaybackUi(private val library: Library, private val settings: Settings, p
     var durationMs by mutableLongStateOf(0); private set
     var speed by mutableFloatStateOf(1f); private set
     var sleepLabel by mutableStateOf<String?>(null); private set
+    /** When a minutes sleep timer runs out (wall clock), so its chip can count down; 0 when there is none. */
+    private var sleepEndsAt = 0L
     /** True while the playing item has a picture (a video podcast), with its width over height. */
     var hasVideo by mutableStateOf(false); private set
     var videoRatio by mutableFloatStateOf(16f / 9f); private set
@@ -75,6 +77,11 @@ class PlaybackUi(private val library: Library, private val settings: Settings, p
         hasVideo = p.currentTracks.containsType(C.TRACK_TYPE_VIDEO); videoRatio = com.everettpenne.media.videoAspectRatio(p)
         PiPState.videoPlaying = PiP.shouldEnter(hasVideo, isPlaying); PiPState.videoRatio = videoRatio
         hasNext = p.hasNextMediaItem()
+        if (sleepEndsAt > 0) {
+            val left = sleepEndsAt - System.currentTimeMillis()
+            // The service pauses when the time is up; the chip then goes back to "Sleep".
+            sleepLabel = if (left <= 0) { sleepEndsAt = 0; null } else "%d:%02d".format(left / 60_000, left / 1000 % 60)
+        }
     }
 
     /** Called about once a second while something plays (and once when a screen that shows the clock opens). */
@@ -119,7 +126,8 @@ class PlaybackUi(private val library: Library, private val settings: Settings, p
     /** minutes > 0: pause after that long; endOfEpisode: pause when it ends; neither: no timer. */
     fun sleep(minutes: Int = 0, endOfEpisode: Boolean = false) {
         controller?.sendCustomCommand(PlaybackCommands.SLEEP, Bundle().apply { putInt(PlaybackCommands.MINUTES, minutes); putBoolean(PlaybackCommands.END_OF_EPISODE, endOfEpisode) })
-        sleepLabel = when { endOfEpisode -> "End of episode"; minutes > 0 -> "$minutes min"; else -> null }
+        sleepEndsAt = if (minutes > 0) System.currentTimeMillis() + minutes * 60_000L else 0L
+        sleepLabel = when { endOfEpisode -> "End of episode"; minutes > 0 -> "$minutes:00"; else -> null }
     }
 
     companion object { const val KEY_FEED = EpisodeMedia.KEY_FEED }

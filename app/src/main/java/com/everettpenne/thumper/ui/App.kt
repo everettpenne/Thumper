@@ -102,7 +102,10 @@ fun ThumperRoot(deepLink: Uri?, inPictureInPicture: Boolean) {
             }
         })
 
+        val linksInApp by context.graph.settings.linksInApp.collectAsState()
         CompositionLocalProvider(com.everettpenne.updater.LocalUpdater provides updater, com.everettpenne.media.LocalImageViewer provides { urls, i -> viewer = urls to i }, LocalTabBar provides tabBar, LocalPlayback provides playback) {
+          // Every link the app opens (show notes, articles, "Open original") goes to the suite's browser over the app, or outside it when that is off.
+          com.everettpenne.browser.BrowserHost(inApp = linksInApp) {
             // The plain page colour is also a glass backdrop, recorded in a sibling of the screens: recording the screens themselves would make any glass
             // control inside them sample a layer that contains it, which sends the renderer into endless recursion.
             val pageBackdrop = com.kyant.backdrop.backdrops.rememberLayerBackdrop()
@@ -123,7 +126,9 @@ fun ThumperRoot(deepLink: Uri?, inPictureInPicture: Boolean) {
                             EpisodeScreen(e.arguments?.getString("feedId").orEmpty(), e.arguments?.getString("episodeId").orEmpty(), nav, onBack = { navController.popBackStack() })
                         }
                         composable("article/{feedId}/{articleId}", listOf(navArgument("feedId") { type = NavType.StringType }, navArgument("articleId") { type = NavType.StringType })) { e ->
-                            ArticleScreen(e.arguments?.getString("feedId").orEmpty(), e.arguments?.getString("articleId").orEmpty(), onBack = { navController.popBackStack() })
+                            ArticleScreen(e.arguments?.getString("feedId").orEmpty(), e.arguments?.getString("articleId").orEmpty(), onBack = { navController.popBackStack() },
+                                // the next or previous article takes this one's place, so Back still returns to the list
+                                onOpen = { f, a -> navController.navigate(Routes.article(f, a)) { popUpTo("article/{feedId}/{articleId}") { inclusive = true } } })
                         }
                     }
                 }
@@ -134,6 +139,7 @@ fun ThumperRoot(deepLink: Uri?, inPictureInPicture: Boolean) {
             }
             viewer?.let { (urls, i) -> com.everettpenne.media.ImageViewer(urls, i) { viewer = null } }
             addFeed?.let { initial -> AddFeedSheet(initial, onDismiss = { addFeed = null }, onAdded = { url -> addFeed = null; openAfterAdd = url }) }
+          }
         }
     }
 }

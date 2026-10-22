@@ -31,7 +31,8 @@ class Library(
     private val clock: () -> Long = { System.currentTimeMillis() },
     private val saveDelayMs: Long = 1_500,
 ) {
-    @Serializable private data class State(val progress: List<Progress> = emptyList(), val read: List<String> = emptyList(), val queue: List<QueueEntry> = emptyList())
+    @Serializable private data class State(val progress: List<Progress> = emptyList(), val read: List<String> = emptyList(), val queue: List<QueueEntry> = emptyList(),
+        val saved: List<Article> = emptyList())
 
     private val subscriptionsFile = File(dir, "subscriptions.json")
     private val stateFile = File(dir, "state.json")
@@ -41,6 +42,7 @@ class Library(
     private val _contents = MutableStateFlow<Map<String, FeedContent>>(emptyMap())
     private val _progress = MutableStateFlow(readState().progress.associateBy { it.episodeId })
     private val _read = MutableStateFlow(readState().read.toSet())
+    private val _saved = MutableStateFlow(readState().saved)
     private val _queue = MutableStateFlow(readState().queue)
     private var saveJob: Job? = null
     private val _newEpisodes = kotlinx.coroutines.flow.MutableSharedFlow<Pair<Feed, List<Episode>>>(extraBufferCapacity = 16)
@@ -53,6 +55,8 @@ class Library(
     val contents: StateFlow<Map<String, FeedContent>> = _contents.asStateFlow()
     val progress: StateFlow<Map<String, Progress>> = _progress.asStateFlow()
     val read: StateFlow<Set<String>> = _read.asStateFlow()
+    /** Articles saved to read later, newest saved first. A copy of each is kept, so it stays after its feed has moved on. */
+    val saved: StateFlow<List<Article>> = _saved.asStateFlow()
     /** Up Next: the episodes that will play after the current one, in order. The episode playing now is not in it. */
     val queue: StateFlow<List<QueueEntry>> = _queue.asStateFlow()
 
@@ -161,10 +165,15 @@ class Library(
 
     fun markRead(articleId: String, read: Boolean = true) { _read.update { if (read) it + articleId else it - articleId }; scheduleSave() }
     fun markAllRead(articleIds: Collection<String>) { _read.update { it + articleIds }; scheduleSave() }
+    fun isSaved(articleId: String) = _saved.value.any { it.id == articleId }
+    /** Saves an article to read later, or takes it off the list. */
+    fun setSaved(article: Article, saved: Boolean) {
+        _saved.update { list -> if (saved) listOf(article) + list.filterNot { it.id == article.id } else list.filterNot { it.id == article.id } }; scheduleSave()
+    }
 
     /** Removes every subscription, saved feed, listening position and read mark. (For a fresh start, and for tests.) */
     suspend fun reset() {
-        _feeds.value = emptyList(); _contents.value = emptyMap(); _progress.value = emptyMap(); _read.value = emptySet(); _queue.value = emptyList()
+        _feeds.value = emptyList(); _contents.value = emptyMap(); _progress.value = emptyMap(); _read.value = emptySet(); _queue.value = emptyList(); _saved.value = emptyList()
         withContext(Dispatchers.IO) { feedsDir.listFiles()?.forEach { it.delete() } }
         flush()
     }
@@ -212,7 +221,7 @@ class Library(
     /** Writes the subscriptions and state now (the delayed save is for the busy moments, such as progress ticking while playing). */
     suspend fun flush() = withContext(Dispatchers.IO + NonCancellable) {
         atomicWrite(subscriptionsFile, ThumperJson.encodeToString(ListSerializer(Feed.serializer()), _feeds.value))
-        atomicWrite(stateFile, ThumperJson.encodeToString(State.serializer(), State(_progress.value.values.toList(), _read.value.toList(), _queue.value)))
+        atomicWrite(stateFile, ThumperJson.encodeToString(State.serializer(), State(_progress.value.values.toList(), _read.value.toList(), _queue.value, _saved.value)))
     }
 
     private fun atomicWrite(target: File, text: String) {

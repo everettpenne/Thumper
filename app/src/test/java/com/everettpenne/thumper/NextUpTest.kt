@@ -35,31 +35,44 @@ class NextUpTest {
         assertEquals("mid", next!!.episode.id)
     }
 
-    @Test fun `next with an empty queue is the next unplayed episode of the same show`() {
-        val next = NextUp.next("new", feed.id, emptyList(), mapOf(feed.id to content(newestFirst)), emptyMap())
-        assertEquals("the one right after it, in the show's order", "mid", next!!.episode.id)
+    @Test fun `next with an empty queue is the show's next episode in time, not the next older one`() {
+        val next = NextUp.next("mid", feed.id, emptyList(), mapOf(feed.id to content(newestFirst)), emptyMap())
+        assertEquals("autoplay moves forward in time", "new", next!!.episode.id)
         assertEquals("it carries the show with it", feed.title, next.feed.title)
+        assertEquals("old is followed by mid", "mid", NextUp.next("old", feed.id, emptyList(), mapOf(feed.id to content(newestFirst)), emptyMap())!!.episode.id)
     }
 
     @Test fun `next skips played episodes`() {
         val progress = mapOf("mid" to played("mid"))
-        val next = NextUp.next("new", feed.id, emptyList(), mapOf(feed.id to content(newestFirst)), progress)
-        assertEquals("old", next!!.episode.id)
+        val next = NextUp.next("old", feed.id, emptyList(), mapOf(feed.id to content(newestFirst)), progress)
+        assertEquals("new", next!!.episode.id)
     }
 
     @Test fun `next counts a part-listened episode as unplayed`() {
         val progress = mapOf("mid" to Progress("mid", positionMs = 60_000, durationMs = 3_600_000))
-        val next = NextUp.next("new", feed.id, emptyList(), mapOf(feed.id to content(newestFirst)), progress)
+        val next = NextUp.next("old", feed.id, emptyList(), mapOf(feed.id to content(newestFirst)), progress)
         assertEquals("mid", next!!.episode.id)
     }
 
-    @Test fun `next is null when nothing after the current episode is unplayed`() {
-        val progress = mapOf("mid" to played("mid"), "old" to played("old"))
-        assertNull(NextUp.next("new", feed.id, emptyList(), mapOf(feed.id to content(newestFirst)), progress))
+    @Test fun `next is null when nothing newer is unplayed`() {
+        val progress = mapOf("mid" to played("mid"), "new" to played("new"))
+        assertNull(NextUp.next("old", feed.id, emptyList(), mapOf(feed.id to content(newestFirst)), progress))
     }
 
-    @Test fun `next is null at the end of a show, so playback stops cleanly`() {
-        assertNull(NextUp.next("old", feed.id, emptyList(), mapOf(feed.id to content(newestFirst)), emptyMap()))
+    @Test fun `next is null after the show's latest episode, so playback stops cleanly`() {
+        assertNull(NextUp.next("new", feed.id, emptyList(), mapOf(feed.id to content(newestFirst)), emptyMap()))
+    }
+
+    @Test fun `next follows publication dates even when the feed lists episodes out of order`() {
+        val shuffled = listOf(ep("mid", 200), ep("new", 300), ep("old", 100))
+        assertEquals("mid", NextUp.next("old", feed.id, emptyList(), mapOf(feed.id to content(shuffled)), emptyMap())!!.episode.id)
+        assertEquals("new", NextUp.next("mid", feed.id, emptyList(), mapOf(feed.id to content(shuffled)), emptyMap())!!.episode.id)
+    }
+
+    @Test fun `a feed without dates is taken as newest first`() {
+        val undated = listOf(ep("c", 0), ep("b", 0), ep("a", 0))
+        assertEquals("b", NextUp.next("a", feed.id, emptyList(), mapOf(feed.id to content(undated)), emptyMap())!!.episode.id)
+        assertEquals("a", NextUp.previous("b", feed.id, mapOf(feed.id to content(undated)))!!.episode.id)
     }
 
     @Test fun `next is null when the current episode is not in a subscribed feed`() {
@@ -67,24 +80,24 @@ class NextUpTest {
         assertNull(NextUp.next("new", "missing", emptyList(), mapOf(feed.id to content(newestFirst)), emptyMap()))
     }
 
-    @Test fun `previous is the episode before the current one in the show's order`() {
-        val prev = NextUp.previous("old", feed.id, mapOf(feed.id to content(newestFirst)))
+    @Test fun `previous is the episode published just before the current one`() {
+        val prev = NextUp.previous("new", feed.id, mapOf(feed.id to content(newestFirst)))
         assertEquals("mid", prev!!.episode.id)
     }
 
     @Test fun `previous does not skip played episodes`() {
-        val progress = mapOf("mid" to played("mid"))   // played does not matter: previous is simply where you were
-        val prev = NextUp.previous("old", feed.id, mapOf(feed.id to content(newestFirst)))
+        // played does not matter: previous is simply where you were
+        val prev = NextUp.previous("new", feed.id, mapOf(feed.id to content(newestFirst)))
         assertEquals("mid", prev!!.episode.id)
     }
 
-    @Test fun `previous is null at the top of a show, so it restarts instead`() {
-        assertNull(NextUp.previous("new", feed.id, mapOf(feed.id to content(newestFirst))))
+    @Test fun `previous is null at the show's oldest episode, so it restarts instead`() {
+        assertNull(NextUp.previous("old", feed.id, mapOf(feed.id to content(newestFirst))))
     }
 
     @Test fun `previous is null when the episode is not in a subscribed feed`() {
         assertNull(NextUp.previous("ghost", feed.id, mapOf(feed.id to content(newestFirst))))
-        assertNull(NextUp.previous("old", "missing", mapOf(feed.id to content(newestFirst))))
+        assertNull(NextUp.previous("new", "missing", mapOf(feed.id to content(newestFirst))))
     }
 
     @Test fun `the restart threshold is the podcast convention of ten seconds`() {
