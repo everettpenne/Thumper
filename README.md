@@ -13,6 +13,8 @@ reading and music — and one player for all of them.
 - **Music:** a Music tab for the songs on the phone (including AIFF/Apple Music libraries) and, optionally, a Jellyfin server. Albums,
   songs, artwork, a shared Up Next and downloads; Jellyfin streams and downloads the original files with the token in an Authorization
   header, never in a URL. The same Now Playing screen, mini player, notification and lock screen serve podcasts and music.
+- **Playlists and favourites:** make lists, rename or delete them, add songs from the hold sheet, and keep favourites. They use the
+  same one player and queue. A Library Check reports missing files, unplayable formats, duplicates, missing covers and untagged songs.
 - **Crossfade and leveling:** music can overlap by 3–12 seconds and use a measured volume correction; podcasts keep their own speed,
   skip buttons and sleep timer. Crossfade is off by default.
 - **Yours:** subscriptions live on the phone. Import and export them as OPML, which every other podcast app and feed reader understands.
@@ -24,7 +26,7 @@ reading and music — and one player for all of them.
 </p>
 
 Not yet: chapters, background refresh with new-episode notifications, drag-to-reorder in Up Next (it has Move Up/Down/Top today), Android Auto,
-music playlists and the Baliset library check. A Jellyfin server is optional and only the first music library on it is shown.
+MusicBrainz cover lookup. A Jellyfin server is optional and only the first music library on it is shown.
 
 ## Where your data goes
 
@@ -71,5 +73,5 @@ build locally, check Glass out beside this repository at that tag (`git -C ../Gl
 
 ## Status
 
-Version 1.0.0 folds the Baliset music player into Thumper: 115 JVM tests, R8 build exercised, Jellyfin against a local mock
-server. Not yet ported: music playlists, the Baliset library check and MusicBrainz cover lookup.
+Version 1.0.0 folds the Baliset music player into Thumper: local music and AIFF, playlists/favourites, the library check, Jellyfin
+streaming and downloads, crossfade and leveling. 115 JVM tests; R8 build exercised; Jellyfin tested against a local mock server.

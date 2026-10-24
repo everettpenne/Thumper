@@ -29,6 +29,7 @@ import com.everettpenne.thumper.data.api.ApiResult
 import com.everettpenne.thumper.data.feed.FeedFetch
 import com.everettpenne.thumper.data.feed.Opml
 import com.everettpenne.thumper.graph
+import com.everettpenne.thumper.music.ui.MusicLibraryCheckSheet
 import com.everettpenne.thumper.ui.components.*
 import com.everettpenne.glass.*
 import com.everettpenne.thumper.ui.theme.Thumper
@@ -60,6 +61,7 @@ fun SettingsScreen(nav: Navigator, onBack: () -> Unit) {
     var message by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
     var cacheBytes by remember { mutableStateOf(SingletonImageLoader.get(context).diskCache?.size ?: 0L) }
+    var showCheck by remember { mutableStateOf(false) }
 
     val import = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { picked ->
         if (picked == null) return@rememberLauncherForActivityResult
@@ -126,6 +128,7 @@ fun SettingsScreen(nav: Navigator, onBack: () -> Unit) {
                         if (levelState.running) GlassButton("Cancel", { graph.levels.cancel() })
                     }
                 }
+                NavRow(Icons.Rounded.FactCheck, "Library Check", "Missing files, duplicates and covers") { showCheck = true }
                 Column(Modifier.padding(16.dp)) {
                     Labeled("Crossfade") {
                         listOf(0 to "Off", 3_000 to "3s", 5_000 to "5s", 8_000 to "8s", 12_000 to "12s").forEach { (ms, label) ->
@@ -165,6 +168,7 @@ fun SettingsScreen(nav: Navigator, onBack: () -> Unit) {
             }
         }
     }
+    if (showCheck) MusicLibraryCheckSheet(onDismiss = { showCheck = false })
 }
 
 @Composable

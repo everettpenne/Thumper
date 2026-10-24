@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -31,6 +32,12 @@ import com.everettpenne.thumper.music.data.Track
 import com.everettpenne.thumper.music.data.albumsOf
 import com.everettpenne.thumper.music.data.toPlayable
 import com.everettpenne.thumper.music.ui.AlbumArt
+import com.everettpenne.thumper.music.ui.FAVORITES
+import com.everettpenne.thumper.music.ui.LocalTrackActions
+import com.everettpenne.thumper.music.ui.MusicPlaylistScreen
+import com.everettpenne.thumper.music.ui.MusicPlaylistsScreen
+import com.everettpenne.thumper.music.ui.TrackActionSheet
+import com.everettpenne.thumper.music.ui.TrackActionsState
 import com.everettpenne.thumper.playback.LocalPlayback
 import com.everettpenne.thumper.ui.components.EmptyState
 import com.everettpenne.thumper.ui.components.SectionTitle
@@ -43,6 +50,15 @@ import com.everettpenne.thumper.util.Format
  */
 @Composable
 fun MusicScreen() {
+    val actions = remember { TrackActionsState() }
+    CompositionLocalProvider(LocalTrackActions provides actions) {
+        MusicContent()
+        TrackActionSheet(actions)
+    }
+}
+
+@Composable
+private fun MusicContent() {
     val context = LocalContext.current
     val graph = context.graph
     val playback = LocalPlayback.current
@@ -51,7 +67,14 @@ fun MusicScreen() {
     val albums = remember(snapshot.tracks) { albumsOf(snapshot.tracks) }
     var selectedKey by remember { mutableStateOf<String?>(null) }
     var showJellyfin by remember { mutableStateOf(false) }
+    var showPlaylists by remember { mutableStateOf(false) }
+    var openPlaylist by remember { mutableStateOf<String?>(null) }
     if (showJellyfin) { com.everettpenne.thumper.music.ui.JellyfinLibrary(onBack = { showJellyfin = false }); return }
+    if (showPlaylists) {
+        MusicPlaylistsScreen(onBack = { showPlaylists = false }, onOpen = { openPlaylist = it; showPlaylists = false }, onFavorites = { openPlaylist = FAVORITES; showPlaylists = false })
+        return
+    }
+    openPlaylist?.let { id -> MusicPlaylistScreen(id, onBack = { openPlaylist = null }); return }
     val selected = albums.firstOrNull { it.key == selectedKey }
 
     val chooseFolder = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
@@ -78,6 +101,7 @@ fun MusicScreen() {
                 else -> "${albums.size} album" + (if (albums.size == 1) "" else "s") + " · ${snapshot.tracks.size} songs"
             },
             actions = {
+                GlassIconButton(Icons.Rounded.QueueMusic, "Playlists and favourites", { showPlaylists = true })
                 GlassIconButton(Icons.Rounded.Dns, "Jellyfin server", { showJellyfin = true })
                 GlassIconButton(Icons.Rounded.CreateNewFolder, "Choose a music folder", { chooseFolder.launch(null) })
                 GlassIconButton(Icons.Rounded.Refresh, "Scan again", {
@@ -181,7 +205,8 @@ private fun MusicAlbum(album: Album, top: androidx.compose.ui.unit.Dp, bottom: a
 
 @Composable
 private fun MusicRow(track: Track, playing: Boolean, number: Int? = null, onClick: () -> Unit) {
-    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 7.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    val actions = LocalTrackActions.current
+    Row(Modifier.fillMaxWidth().combinedClickable(onClick = onClick, onLongClick = actions?.let { state -> { state.show(track) } }).padding(vertical = 7.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         if (number != null) Text("$number", style = IosType.footnote, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(18.dp))
         else AlbumArt(track.albumKey, Modifier.size(46.dp), corner = 10.dp, iconSize = 18.dp)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {

@@ -113,6 +113,15 @@ class PlaybackUi(private val library: Library, private val settings: Settings, p
         c.prepare(); c.play()
     }
 
+    /** Puts a song or episode directly after the current one. */
+    fun playNext(entry: Playable) {
+        library.enqueue(entry, next = true)
+        controller?.let { if (it.mediaItemCount == 0) play(entry) }
+    }
+
+    /** Adds a song or episode to the end of the one queue. */
+    fun addToQueue(entry: Playable) = library.enqueue(entry)
+
     /** Plays any entry from the one queue: an episode from a feed, a downloaded one, or a song. */
     fun play(entry: Playable) {
         val c = controller ?: return

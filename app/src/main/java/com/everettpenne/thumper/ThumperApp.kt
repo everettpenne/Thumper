@@ -37,6 +37,8 @@ class Graph(app: Context) {
     val levels = com.everettpenne.thumper.music.data.MusicLevels(app)
     /** The optional Jellyfin server: another source for the Music tab. */
     val jellyfin = com.everettpenne.thumper.music.data.jellyfin.Jellyfin(app)
+    val playlists = com.everettpenne.thumper.music.data.Playlists(app)
+    val check = com.everettpenne.thumper.music.data.MusicLibraryCheck(app)
     val downloads = com.everettpenne.thumper.data.Downloads(app, File(app.getExternalFilesDir(null) ?: app.filesDir, "downloads").apply { mkdirs() }, library, settings, scope)
     /** Where downloaded episodes are on this phone: the player plays these in preference to the network. */
     val localFiles: com.everettpenne.thumper.playback.LocalFiles get() = downloads

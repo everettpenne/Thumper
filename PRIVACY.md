@@ -14,7 +14,8 @@ Podcast Index key and secret are encrypted with a key in Android's Keystore.
 
 The Music tab reads audio from Android's media index (with the `READ_MEDIA_AUDIO` permission) or from a folder you choose with the
 system picker. It reads the files' tags and embedded covers, and stores an index, small cover JPEGs, and the loudness measurements you
-ask for in the app's private storage. Local music never touches the network.
+ask for in the app's private storage. Playlists, favourites and the library check live in the same private storage; a check only
+reads the files and covers already on the phone. Local music never touches the network.
 
 ## Jellyfin
 
