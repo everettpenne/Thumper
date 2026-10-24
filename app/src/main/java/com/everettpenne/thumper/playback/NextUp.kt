@@ -3,7 +3,7 @@ package com.everettpenne.thumper.playback
 import com.everettpenne.thumper.data.model.Episode
 import com.everettpenne.thumper.data.model.FeedContent
 import com.everettpenne.thumper.data.model.Progress
-import com.everettpenne.thumper.data.model.QueueEntry
+import com.everettpenne.thumper.data.model.Playable
 
 /**
  * Pure decisions about what comes next or before the playing episode. Kept free of Android and of the player, so the whole
@@ -23,15 +23,15 @@ object NextUp {
      * podcast published after it (skipping played ones). Null when there is nothing newer to play, so playback stops cleanly at the
      * show's latest episode.
      */
-    fun next(currentId: String?, currentFeedId: String?, queue: List<QueueEntry>, contents: Map<String, FeedContent>, progress: Map<String, Progress>): QueueEntry? {
-        queue.firstOrNull { it.episode.id != currentId }?.let { return it }
+    fun next(currentId: String?, currentFeedId: String?, queue: List<Playable>, contents: Map<String, FeedContent>, progress: Map<String, Progress>): Playable? {
+        queue.firstOrNull { it.id != currentId }?.let { return it }
         val content = contents[currentFeedId] ?: return null
         val episodes = oldestFirst(content.episodes)
         val index = episodes.indexOfFirst { it.id == currentId }
         if (index < 0) return null
         for (i in index + 1 until episodes.size) {
             val episode = episodes[i]
-            if (progress[episode.id]?.played != true) return QueueEntry(episode, content.feed)
+            if (progress[episode.id]?.played != true) return Playable.Podcast(episode, content.feed)
         }
         return null
     }
@@ -41,12 +41,12 @@ object NextUp {
      * subscribed feed), so the caller restarts it instead. Unlike [next], a played episode is not skipped: "previous" is simply where
      * you were.
      */
-    fun previous(currentId: String?, currentFeedId: String?, contents: Map<String, FeedContent>): QueueEntry? {
+    fun previous(currentId: String?, currentFeedId: String?, contents: Map<String, FeedContent>): Playable? {
         val content = contents[currentFeedId] ?: return null
         val episodes = oldestFirst(content.episodes)
         val index = episodes.indexOfFirst { it.id == currentId }
         if (index <= 0) return null
-        return QueueEntry(episodes[index - 1], content.feed)
+        return Playable.Podcast(episodes[index - 1], content.feed)
     }
 
     /**

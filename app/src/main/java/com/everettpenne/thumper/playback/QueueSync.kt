@@ -19,7 +19,13 @@ import kotlinx.coroutines.launch
  * step back to the episode you were just on. When a queued episode becomes the current one (it started by itself, or "next" was pressed) it leaves the
  * queue; one that was listened to part-way picks up where it was left.
  */
-class QueueSync(private val player: Player, private val library: Library, private val local: LocalFiles?) : Player.Listener {
+class QueueSync(
+    private val player: Player,
+    private val library: Library,
+    private val local: LocalFiles?,
+    private val music: MusicFiles? = null,
+    private val active: () -> Boolean = { true },
+) : Player.Listener {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     init {
@@ -29,6 +35,7 @@ class QueueSync(private val player: Player, private val library: Library, privat
     }
 
     override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+        if (!active()) return
         val id = mediaItem?.mediaId?.takeIf { it.isNotEmpty() } ?: return
         library.dequeue(id)
         if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO || reason == Player.MEDIA_ITEM_TRANSITION_REASON_SEEK) {
@@ -37,17 +44,19 @@ class QueueSync(private val player: Player, private val library: Library, privat
         sync()
     }
 
+    fun refresh() { sync() }
+
     private fun sync() {
-        if (player.mediaItemCount == 0) return
+        if (!active() || player.mediaItemCount == 0) return
         val current = player.currentMediaItemIndex
         val currentId = player.currentMediaItem?.mediaId
-        val queued = library.queue.value.filter { it.episode.id != currentId }
+        val queued = library.queue.value.filter { it.id != currentId }
         val wanted = when {
-            queued.isNotEmpty() -> queued.map { EpisodeMedia.item(it.episode, it.feed, local) }
+            queued.isNotEmpty() -> queued.map { PlayableMedia.item(it, local, music) }
             else -> {
-                val feedId = player.currentMediaItem?.mediaMetadata?.extras?.getString(EpisodeMedia.KEY_FEED)
+                val feedId = player.currentMediaItem?.mediaMetadata?.extras?.getString(PlayableMedia.KEY_FEED)
                 NextUp.next(currentId, feedId, library.queue.value, library.contents.value, library.progress.value)
-                    ?.let { listOf(EpisodeMedia.item(it.episode, it.feed, local)) } ?: emptyList()
+                    ?.let { listOf(PlayableMedia.item(it, local, music)) } ?: emptyList()
             }
         }
         val have = (current + 1 until player.mediaItemCount).map { player.getMediaItemAt(it).mediaId }
