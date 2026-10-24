@@ -32,6 +32,7 @@ import com.everettpenne.thumper.music.data.albumsOf
 import com.everettpenne.thumper.music.data.toPlayable
 import com.everettpenne.thumper.music.ui.AlbumArt
 import com.everettpenne.thumper.playback.LocalPlayback
+import com.everettpenne.thumper.ui.components.EmptyState
 import com.everettpenne.thumper.ui.components.SectionTitle
 import com.everettpenne.thumper.ui.theme.Thumper
 import com.everettpenne.thumper.util.Format
@@ -97,11 +98,12 @@ fun MusicScreen() {
         }
         if (snapshot.tracks.isEmpty()) {
             Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                GlassEmptyState(
-                    Icons.Rounded.LibraryMusic,
-                    "Bring your music in",
-                    "Use the songs already on this phone, or choose the folder your library lives in. Nothing is uploaded.",
-                ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    EmptyState(
+                        Icons.Rounded.LibraryMusic,
+                        "Bring your music in",
+                        "Use the songs already on this phone, or choose the folder your library lives in. Nothing is uploaded.",
+                    )
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         GlassButton("Phone music", ::usePhoneMusic, prominent = true)
                         GlassButton("Choose folder", { chooseFolder.launch(null) })

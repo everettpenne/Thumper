@@ -36,6 +36,7 @@ import com.everettpenne.thumper.music.data.jellyfin.toTrack
 import com.everettpenne.thumper.music.data.toPlayable
 import com.everettpenne.thumper.playback.LocalPlayback
 import com.everettpenne.thumper.ui.components.GlassTextField
+import com.everettpenne.thumper.ui.components.EmptyState
 import com.everettpenne.thumper.ui.components.SectionTitle
 import com.everettpenne.thumper.ui.theme.Thumper
 import com.everettpenne.thumper.util.Format
@@ -247,7 +248,7 @@ private fun JellyfinBrowse(onBack: () -> Unit) {
                             if (row.size == 1) Spacer(Modifier.weight(1f))
                         }
                     }
-                    if (albums.isEmpty() && !loading) item { GlassEmptyState(Icons.Rounded.Album, "No albums", "This server's music library is empty.") }
+                    if (albums.isEmpty() && !loading) item { EmptyState(Icons.Rounded.Album, "No albums", "This server's music library is empty.") }
                 }
                 JfTab.Songs -> LazyColumn(
                     Modifier.fillMaxSize(),
@@ -256,7 +257,7 @@ private fun JellyfinBrowse(onBack: () -> Unit) {
                     items(songs, key = { it.id }) { song ->
                         JfSongRow(song, saved, states, onPlay = { play(songs, songs.indexOf(song)) }, onDownload = { download(song) })
                     }
-                    if (songs.isEmpty() && !loading) item { GlassEmptyState(Icons.Rounded.MusicNote, "No songs", "This server's music library is empty.") }
+                    if (songs.isEmpty() && !loading) item { EmptyState(Icons.Rounded.MusicNote, "No songs", "This server's music library is empty.") }
                 }
                 JfTab.Downloads -> LazyColumn(
                     Modifier.fillMaxSize(),
@@ -270,7 +271,7 @@ private fun JellyfinBrowse(onBack: () -> Unit) {
                             if (track != null) playback.playQueue(listOf(track.toPlayable(artworkUri = Artwork.fileUri(context, track.albumKey), artUrl = track.artUrl)), 0)
                         }, onDelete = { jellyfin.downloads.remove(savedItem.item.id) })
                     }
-                    if (saved.isEmpty()) item { GlassEmptyState(Icons.Rounded.Download, "No downloads", "Download an album to listen with the server off.") }
+                    if (saved.isEmpty()) item { EmptyState(Icons.Rounded.Download, "No downloads", "Download an album to listen with the server off.") }
                 }
             }
         }
