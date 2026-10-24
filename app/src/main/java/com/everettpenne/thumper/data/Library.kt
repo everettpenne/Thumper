@@ -31,19 +31,22 @@ class Library(
     private val clock: () -> Long = { System.currentTimeMillis() },
     private val saveDelayMs: Long = 1_500,
 ) {
-    @Serializable private data class State(val progress: List<Progress> = emptyList(), val read: List<String> = emptyList(), val queue: List<QueueEntry> = emptyList(),
-        val saved: List<Article> = emptyList())
+    @Serializable private data class State(val progress: List<Progress> = emptyList(), val read: List<String> = emptyList(),
+        /** The old podcast-only Up Next, kept so a downgrade still has its episodes. New builds read and write [mediaQueue]. */
+        val queue: List<QueueEntry> = emptyList(), val saved: List<Article> = emptyList(),
+        val mediaQueue: List<Playable> = emptyList())
 
     private val subscriptionsFile = File(dir, "subscriptions.json")
     private val stateFile = File(dir, "state.json")
     private val feedsDir = File(dir, "feeds").apply { mkdirs() }
 
+    private val initial = readState()
     private val _feeds = MutableStateFlow(readSubscriptions())
     private val _contents = MutableStateFlow<Map<String, FeedContent>>(emptyMap())
-    private val _progress = MutableStateFlow(readState().progress.associateBy { it.episodeId })
-    private val _read = MutableStateFlow(readState().read.toSet())
-    private val _saved = MutableStateFlow(readState().saved)
-    private val _queue = MutableStateFlow(readState().queue)
+    private val _progress = MutableStateFlow(initial.progress.associateBy { it.episodeId })
+    private val _read = MutableStateFlow(initial.read.toSet())
+    private val _saved = MutableStateFlow(initial.saved)
+    private val _queue = MutableStateFlow(initial.mediaQueue.ifEmpty { initial.queue.map { Playable.Podcast(it.episode, it.feed) } })
     private var saveJob: Job? = null
     private val _newEpisodes = kotlinx.coroutines.flow.MutableSharedFlow<Pair<Feed, List<Episode>>>(extraBufferCapacity = 16)
     /** Emitted after a refresh finds episodes that were not there before (newest first), with the show: what auto-download listens for. */
@@ -57,8 +60,8 @@ class Library(
     val read: StateFlow<Set<String>> = _read.asStateFlow()
     /** Articles saved to read later, newest saved first. A copy of each is kept, so it stays after its feed has moved on. */
     val saved: StateFlow<List<Article>> = _saved.asStateFlow()
-    /** Up Next: the episodes that will play after the current one, in order. The episode playing now is not in it. */
-    val queue: StateFlow<List<QueueEntry>> = _queue.asStateFlow()
+    /** Up Next: everything that will play after the current item, in order. An item playing now is not in it. */
+    val queue: StateFlow<List<Playable>> = _queue.asStateFlow()
 
     init { scope.launch { loadContents() } }
 
@@ -181,14 +184,17 @@ class Library(
     // ---- up next -----------------------------------------------------------------------------------------------------------
 
     /** Adds an episode to Up Next: at the front ([next]) or the end. An episode already queued moves rather than appearing twice. */
-    fun enqueue(episode: Episode, feed: Feed, next: Boolean = false) {
-        val entry = QueueEntry(episode.copy(summaryHtml = episode.summaryHtml.take(MAX_NOTES)), feed)
-        _queue.update { q -> val rest = q.filterNot { it.episode.id == episode.id }; if (next) listOf(entry) + rest else rest + entry }
+    fun enqueue(episode: Episode, feed: Feed, next: Boolean = false) =
+        enqueue(Playable.Podcast(episode.copy(summaryHtml = episode.summaryHtml.take(MAX_NOTES)), feed), next)
+
+    /** Adds any playable (an episode or a song) to the one Up Next: at the front ([next]) or the end. */
+    fun enqueue(entry: Playable, next: Boolean = false) {
+        _queue.update { q -> val rest = q.filterNot { it.id == entry.id }; if (next) listOf(entry) + rest else rest + entry }
         scheduleSave()
     }
 
-    fun dequeue(episodeId: String) { if (_queue.value.any { it.episode.id == episodeId }) { _queue.update { q -> q.filterNot { it.episode.id == episodeId } }; scheduleSave() } }
-    fun isQueued(episodeId: String) = _queue.value.any { it.episode.id == episodeId }
+    fun dequeue(id: String) { if (_queue.value.any { it.id == id }) { _queue.update { q -> q.filterNot { it.id == id } }; scheduleSave() } }
+    fun isQueued(id: String) = _queue.value.any { it.id == id }
     fun clearQueue() { _queue.value = emptyList(); scheduleSave() }
 
     /** Moves the entry at [from] to position [to] (both indices into the current queue; out-of-range moves are ignored). */
@@ -221,7 +227,11 @@ class Library(
     /** Writes the subscriptions and state now (the delayed save is for the busy moments, such as progress ticking while playing). */
     suspend fun flush() = withContext(Dispatchers.IO + NonCancellable) {
         atomicWrite(subscriptionsFile, ThumperJson.encodeToString(ListSerializer(Feed.serializer()), _feeds.value))
-        atomicWrite(stateFile, ThumperJson.encodeToString(State.serializer(), State(_progress.value.values.toList(), _read.value.toList(), _queue.value, _saved.value)))
+        val podcasts = _queue.value.filterIsInstance<Playable.Podcast>().map { QueueEntry(it.episode, it.feed) }
+        atomicWrite(stateFile, ThumperJson.encodeToString(State.serializer(), State(
+            progress = _progress.value.values.toList(), read = _read.value.toList(), queue = podcasts,
+            saved = _saved.value, mediaQueue = _queue.value,
+        )))
     }
 
     private fun atomicWrite(target: File, text: String) {

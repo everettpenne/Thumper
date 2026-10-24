@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import com.everettpenne.thumper.graph
 import com.everettpenne.thumper.playback.LocalPlayback
 import com.everettpenne.thumper.playback.NextUp
+import com.everettpenne.thumper.data.model.Playable
 import com.everettpenne.thumper.ui.components.*
 import com.everettpenne.glass.*
 import com.everettpenne.media.FullscreenVideo
@@ -71,7 +72,7 @@ fun PlayerScreen(nav: Navigator, onBack: () -> Unit, inPictureInPicture: Boolean
 
     GlassScreen(bars = {
         GlassCenteredTopBar("Now Playing", onBack, Modifier.align(Alignment.TopCenter), subtitle = pb.showTitle.takeIf { it.isNotBlank() }) {
-            if (pb.hasEpisode) Box {
+            if (pb.hasEpisode && !pb.isMusic) Box {
                 GlassIconButton(Icons.Rounded.MoreHoriz, "More", { moreMenu = true })
                 GlassDropdownMenu(moreMenu, { moreMenu = false }) {
                     val ep = pb.episodeId; val fid = pb.feedId
@@ -136,10 +137,16 @@ fun PlayerScreen(nav: Navigator, onBack: () -> Unit, inPictureInPicture: Boolean
                         style = IosType.caption1, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(top = 2.dp))
                 }
                 com.everettpenne.media.PlayerTransport(pb.isPlaying, tap(pb::toggle), accent = Thumper.accent, buffering = pb.buffering, size = 76.dp,
-                    start = { EpisodeSkipButton(previous = true, onClick = tap(pb::previous)); SkipButton(false, back, tap(pb::skipBack)) },
-                    end = { SkipButton(true, forward, tap(pb::skipForward)); EpisodeSkipButton(previous = false, enabled = nextUp != null, onClick = tap(pb::next)) })
+                    start = {
+                        EpisodeSkipButton(previous = true, onClick = tap(pb::previous))
+                        if (!pb.isMusic) SkipButton(false, back, tap(pb::skipBack))
+                    },
+                    end = {
+                        if (!pb.isMusic) SkipButton(true, forward, tap(pb::skipForward))
+                        EpisodeSkipButton(previous = false, enabled = nextUp != null, onClick = tap(pb::next))
+                    })
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Box {
+                    if (!pb.isMusic) Box {
                         GlassChip(pb.speed != 1f, { speedMenu = true }) { ChipLabel(Icons.Rounded.Speed, Format.speed(pb.speed)) }
                         GlassDropdownMenu(speedMenu, { speedMenu = false }) { SPEEDS.forEach { s -> GlassMenuItem(Format.speed(s), { pb.changeSpeed(s); speedMenu = false }, selected = s == pb.speed) } }
                     }
@@ -167,15 +174,18 @@ fun PlayerScreen(nav: Navigator, onBack: () -> Unit, inPictureInPicture: Boolean
 
 /** What plays next, as a card with its cover: tap to skip to it now. */
 @Composable
-private fun UpNextCard(entry: com.everettpenne.thumper.data.model.QueueEntry, onPlay: () -> Unit) {
+private fun UpNextCard(entry: Playable, onPlay: () -> Unit) {
+    val subtitle = when (entry) {
+        is Playable.Podcast -> listOf(entry.feed.title, Format.relativeDate(entry.episode.publishedAt)).filter { it.isNotEmpty() }.joinToString("  ·  ")
+        is Playable.Music -> listOf(entry.artist, entry.album).filter { it.isNotEmpty() }.joinToString("  ·  ")
+    }
     Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .45f)).clickable(onClick = onPlay).padding(10.dp)
-        .semantics { contentDescription = "Play next: ${entry.episode.title}" }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Artwork(entry.episode.imageUrl ?: entry.feed.imageUrl, 52.dp, radius = 10.dp)
+        .semantics { contentDescription = "Play next: ${entry.title}" }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Artwork(entry.artworkUrl, 52.dp, radius = 10.dp)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text("UP NEXT", style = IosType.caption1.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold), color = Thumper.accent)
-            Text(entry.episode.title, style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Text(listOf(entry.feed.title, Format.relativeDate(entry.episode.publishedAt)).filter { it.isNotEmpty() }.joinToString("  ·  "), style = IosType.caption1,
-                color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(entry.title, style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(subtitle, style = IosType.caption1, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Icon(Icons.Rounded.SkipNext, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }

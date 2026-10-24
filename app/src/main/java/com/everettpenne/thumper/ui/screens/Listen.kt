@@ -63,7 +63,9 @@ fun ListenScreen(nav: Navigator) {
                 }
                 if (queue.isNotEmpty()) {
                     item { SectionTitle("Up Next") { androidx.compose.material3.Text("See all", style = com.everettpenne.glass.IosType.subheadline.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold), color = com.everettpenne.thumper.ui.theme.Thumper.accent, modifier = Modifier.clickable { nav.openQueue() }) } }
-                    items(queue.take(3), key = { "q-" + it.episode.id }) { (ep, feed) ->
+                    items(queue.filterIsInstance<com.everettpenne.thumper.data.model.Playable.Podcast>().take(3), key = { "q-" + it.id }) { entry ->
+                        val ep = entry.episode
+                        val feed = entry.feed
                         EpisodeRow(ep, feed, progress[ep.id], { nav.openEpisode(feed.id, ep.id) }, { playback.play(ep, feed) })
                     }
                     item { Spacer(Modifier.height(6.dp)) }

@@ -45,7 +45,7 @@ import com.kyant.backdrop.backdrops.layerBackdrop
 import kotlinx.coroutines.launch
 
 object Routes {
-    const val LISTEN = "listen"; const val READ = "read"; const val SEARCH = "search"; const val SETTINGS = "settings"; const val PLAYER = "player"; const val QUEUE = "queue"; const val DOWNLOADS = "downloads"
+    const val LISTEN = "listen"; const val READ = "read"; const val MUSIC = "music"; const val SEARCH = "search"; const val SETTINGS = "settings"; const val PLAYER = "player"; const val QUEUE = "queue"; const val DOWNLOADS = "downloads"
     fun feed(url: String) = "feed/${Uri.encode(url)}"
     fun episode(feedId: String, episodeId: String) = "episode/$feedId/$episodeId"
     fun article(feedId: String, articleId: String) = "article/$feedId/$articleId"
@@ -116,6 +116,7 @@ fun ThumperRoot(deepLink: Uri?, inPictureInPicture: Boolean) {
                         enterTransition = { fadeIn() }, exitTransition = { fadeOut() }, popEnterTransition = { fadeIn() }, popExitTransition = { fadeOut() }) {
                         composable(Routes.LISTEN) { ListenScreen(nav) }
                         composable(Routes.READ) { ReadScreen(nav) }
+                        composable(Routes.MUSIC) { MusicScreen() }
                         composable(Routes.SEARCH) { SearchScreen(nav) }
                         composable(Routes.QUEUE) { QueueScreen(nav, onBack = { navController.popBackStack() }) }
                         composable(Routes.SETTINGS) { SettingsScreen(nav, onBack = { navController.popBackStack() }) }

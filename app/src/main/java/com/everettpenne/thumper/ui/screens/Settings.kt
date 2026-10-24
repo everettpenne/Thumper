@@ -29,6 +29,7 @@ import com.everettpenne.thumper.data.api.ApiResult
 import com.everettpenne.thumper.data.feed.FeedFetch
 import com.everettpenne.thumper.data.feed.Opml
 import com.everettpenne.thumper.graph
+import com.everettpenne.thumper.music.ui.MusicLibraryCheckSheet
 import com.everettpenne.thumper.ui.components.*
 import com.everettpenne.glass.*
 import com.everettpenne.thumper.ui.theme.Thumper
@@ -49,6 +50,10 @@ fun SettingsScreen(nav: Navigator, onBack: () -> Unit) {
     val uri = LocalUriHandler.current
     val choice by settings.directory.collectAsState(); val back by settings.skipBackSeconds.collectAsState(); val forward by settings.skipForwardSeconds.collectAsState(); val speed by settings.speed.collectAsState()
     val autoplay by settings.autoplay.collectAsState()
+    val leveling by graph.musicSettings.leveling.collectAsState()
+    val crossfade by graph.musicSettings.crossfadeMs.collectAsState()
+    val levelState by graph.levels.state.collectAsState()
+    val musicSnapshot by graph.music.snapshot.collectAsState()
     val linksInApp by settings.linksInApp.collectAsState(); val fullArticles by settings.fullArticles.collectAsState(); val readerScale by settings.readerScale.collectAsState()
     val wifiOnly by settings.wifiOnlyDownloads.collectAsState(); val deletePlayed by settings.deleteWhenPlayed.collectAsState(); val downloadBytes by graph.downloads.totalBytes.collectAsState(0L)
     val hasKeys by settings.hasPodcastIndexKeys.collectAsState(); val feeds by graph.library.feeds.collectAsState(); val refreshing by graph.refreshing.collectAsState()
@@ -56,6 +61,7 @@ fun SettingsScreen(nav: Navigator, onBack: () -> Unit) {
     var message by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
     var cacheBytes by remember { mutableStateOf(SingletonImageLoader.get(context).diskCache?.size ?: 0L) }
+    var showCheck by remember { mutableStateOf(false) }
 
     val import = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { picked ->
         if (picked == null) return@rememberLauncherForActivityResult
@@ -104,6 +110,33 @@ fun SettingsScreen(nav: Navigator, onBack: () -> Unit) {
                 }
                 SwitchRow(Icons.Rounded.Autorenew, "Autoplay Next Episode", autoplay, settings::setAutoplay)
             }
+            Group("Music", footer = "Leveling and crossfade apply to music only. Podcasts keep their own speed, sleep timer and speech audio.") {
+                SwitchRow(Icons.Rounded.VolumeUp, "Volume Leveling", leveling, graph.musicSettings::setLeveling)
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        when {
+                            levelState.running -> "Measuring ${levelState.done} of ${levelState.total}…"
+                            levelState.error != null -> levelState.error!!
+                            else -> "${levelState.measured} of ${musicSnapshot.tracks.size} songs measured"
+                        },
+                        style = MaterialTheme.typography.bodySmall, color = if (levelState.error != null) Thumper.red else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        GlassButton(if (levelState.running) "Measuring…" else "Measure Volume", {
+                            graph.levels.analyze(musicSnapshot.tracks)
+                        }, enabled = !levelState.running, prominent = true)
+                        if (levelState.running) GlassButton("Cancel", { graph.levels.cancel() })
+                    }
+                }
+                NavRow(Icons.Rounded.FactCheck, "Library Check", "Missing files, duplicates and covers") { showCheck = true }
+                Column(Modifier.padding(16.dp)) {
+                    Labeled("Crossfade") {
+                        listOf(0 to "Off", 3_000 to "3s", 5_000 to "5s", 8_000 to "8s", 12_000 to "12s").forEach { (ms, label) ->
+                            GlassChip(crossfade == ms, { graph.musicSettings.setCrossfadeMs(ms) }) { Text(label) }
+                        }
+                    }
+                }
+            }
             Group("Reading", footer = if (linksInApp) "Links open in Thumper's own browser, over the app. On GrapheneOS it is Vanadium's WebView that draws them." else
                 "Links open in " + (if (com.everettpenne.browser.Browsers.hasVanadium(context)) "Vanadium." else "your browser.")) {
                 SwitchRow(Icons.Rounded.Language, "Open Links in Thumper", linksInApp, settings::setLinksInApp)
@@ -135,6 +168,7 @@ fun SettingsScreen(nav: Navigator, onBack: () -> Unit) {
             }
         }
     }
+    if (showCheck) MusicLibraryCheckSheet(onDismiss = { showCheck = false })
 }
 
 @Composable

@@ -21,6 +21,7 @@ import com.everettpenne.thumper.data.Library
 import com.everettpenne.thumper.data.Settings
 import com.everettpenne.thumper.data.model.Episode
 import com.everettpenne.thumper.data.model.Feed
+import com.everettpenne.thumper.data.model.Playable
 import com.everettpenne.thumper.graph
 import kotlinx.coroutines.delay
 
@@ -30,10 +31,14 @@ import kotlinx.coroutines.delay
  * playing item's own metadata, so after the app is reopened with something still playing it picks that up.
  */
 @Stable
-class PlaybackUi(private val library: Library, private val settings: Settings, private val local: () -> LocalFiles?) {
+class PlaybackUi(private val library: Library, private val settings: Settings, private val local: () -> LocalFiles?, private val musicFiles: () -> MusicFiles? = { null }) {
     var controller by mutableStateOf<MediaController?>(null); internal set
     var episodeId by mutableStateOf<String?>(null); private set
     var feedId by mutableStateOf<String?>(null); private set
+    /** What the current item is: podcast or music. The player screen branches on this; the queue and service do not. */
+    var kind by mutableStateOf<String?>(null); private set
+    var trackId by mutableStateOf<String?>(null); private set
+    var albumId by mutableStateOf<String?>(null); private set
     var title by mutableStateOf(""); private set
     var showTitle by mutableStateOf(""); private set
     var artworkUrl by mutableStateOf<String?>(null); private set
@@ -53,8 +58,10 @@ class PlaybackUi(private val library: Library, private val settings: Settings, p
     /** True when there is a next episode to skip to (a queued item, or the next unplayed one of the same show). */
     var hasNext by mutableStateOf(false); private set
 
-    /** True when an episode is loaded (playing or paused): the mini player shows. */
+    /** True when something is loaded (playing or paused): the mini player shows. */
     val hasEpisode: Boolean get() = episodeId != null
+    val hasMedia: Boolean get() = hasEpisode
+    val isMusic: Boolean get() = kind == Playable.Music.KIND
 
     private val listener = object : Player.Listener {
         override fun onEvents(player: Player, events: Player.Events) { sync(player) }
@@ -68,6 +75,9 @@ class PlaybackUi(private val library: Library, private val settings: Settings, p
         val item = p.currentMediaItem
         episodeId = item?.mediaId?.takeIf { it.isNotEmpty() }
         feedId = item?.mediaMetadata?.extras?.getString(KEY_FEED)
+        kind = item?.mediaMetadata?.extras?.getString(PlayableMedia.KEY_KIND)
+        trackId = item?.mediaMetadata?.extras?.getString(PlayableMedia.KEY_TRACK)
+        albumId = item?.mediaMetadata?.extras?.getString(PlayableMedia.KEY_ALBUM)
         title = item?.mediaMetadata?.title?.toString().orEmpty(); showTitle = item?.mediaMetadata?.artist?.toString().orEmpty()
         artworkUrl = item?.mediaMetadata?.artworkUri?.toString()
         isPlaying = p.isPlaying; buffering = p.playbackState == Player.STATE_BUFFERING
@@ -87,15 +97,41 @@ class PlaybackUi(private val library: Library, private val settings: Settings, p
     /** Called about once a second while something plays (and once when a screen that shows the clock opens). */
     fun tick() { controller?.let { sync(it) } }
 
-    fun play(episode: Episode, feed: Feed) {
+    fun play(episode: Episode, feed: Feed) = play(Playable.Podcast(episode, feed))
+
+    /** Plays a list from [startIndex], putting the rest of the list in the one Up Next. */
+    fun playQueue(entries: List<Playable>, startIndex: Int = 0) {
+        val c = controller ?: return
+        if (entries.isEmpty()) return
+        val index = startIndex.coerceIn(0, entries.lastIndex)
+        error = null
+        library.clearQueue()
+        entries.drop(index + 1).forEach { library.enqueue(it) }
+        val items = entries.map { PlayableMedia.item(it, local(), musicFiles()) }
+        c.setMediaItems(items, index, 0L)
+        c.setPlaybackSpeed(if (entries[index] is Playable.Podcast) settings.speed.value else 1f)
+        c.prepare(); c.play()
+    }
+
+    /** Puts a song or episode directly after the current one. */
+    fun playNext(entry: Playable) {
+        library.enqueue(entry, next = true)
+        controller?.let { if (it.mediaItemCount == 0) play(entry) }
+    }
+
+    /** Adds a song or episode to the end of the one queue. */
+    fun addToQueue(entry: Playable) = library.enqueue(entry)
+
+    /** Plays any entry from the one queue: an episode from a feed, a downloaded one, or a song. */
+    fun play(entry: Playable) {
         val c = controller ?: return
         error = null
-        if (c.currentMediaItem?.mediaId == episode.id) { if (!c.isPlaying) c.play(); return }
-        val saved = library.progress(episode.id)
+        if (c.currentMediaItem?.mediaId == entry.id) { if (!c.isPlaying) c.play(); return }
+        val saved = (entry as? Playable.Podcast)?.let { library.progress(it.episode.id) }
         val start = saved?.takeIf { !it.played && it.durationMs > 0 && it.positionMs < it.durationMs - 10_000 }?.positionMs ?: 0L
-        library.dequeue(episode.id)                                   // playing it now: it is no longer "up next"
-        c.setMediaItem(EpisodeMedia.item(episode, feed, local()), start)
-        c.setPlaybackSpeed(settings.speed.value)
+        library.dequeue(entry.id)                                     // playing it now: it is no longer "up next"
+        c.setMediaItem(PlayableMedia.item(entry, local(), musicFiles()), start)
+        c.setPlaybackSpeed(if (entry is Playable.Podcast) settings.speed.value else 1f)
         c.prepare(); c.play()
     }
 
@@ -103,7 +139,7 @@ class PlaybackUi(private val library: Library, private val settings: Settings, p
     fun next() {
         val c = controller ?: return
         if (c.hasNextMediaItem()) { c.seekToNextMediaItem(); return }
-        NextUp.next(episodeId, feedId, library.queue.value, library.contents.value, library.progress.value)?.let { play(it.episode, it.feed) }
+        NextUp.next(episodeId, feedId, library.queue.value, library.contents.value, library.progress.value)?.let { play(it) }
     }
 
     /** Skips to the previous episode: restarts the current one once past a few seconds, otherwise the one before it (what just played, or the show's previous episode). */
@@ -111,7 +147,7 @@ class PlaybackUi(private val library: Library, private val settings: Settings, p
         val c = controller ?: return
         if (c.hasPreviousMediaItem()) { c.seekToPreviousMediaItem(); return }   // restart when past the threshold, else step back
         if (c.currentPosition > NextUp.RESTART_AFTER_MS) { seekTo(0); return }
-        NextUp.previous(episodeId, feedId, library.contents.value)?.let { play(it.episode, it.feed) } ?: seekTo(0)
+        NextUp.previous(episodeId, feedId, library.contents.value)?.let { play(it) } ?: seekTo(0)
     }
 
     fun toggle() { controller?.let { if (it.isPlaying) it.pause() else it.play() } }
@@ -130,7 +166,7 @@ class PlaybackUi(private val library: Library, private val settings: Settings, p
         sleepLabel = when { endOfEpisode -> "End of episode"; minutes > 0 -> "$minutes:00"; else -> null }
     }
 
-    companion object { const val KEY_FEED = EpisodeMedia.KEY_FEED }
+    companion object { const val KEY_FEED = PlayableMedia.KEY_FEED }
 }
 
 val LocalPlayback = staticCompositionLocalOf<PlaybackUi> { error("no PlaybackUi provided") }
@@ -140,7 +176,7 @@ val LocalPlayback = staticCompositionLocalOf<PlaybackUi> { error("no PlaybackUi 
 fun rememberPlaybackUi(): PlaybackUi {
     val context = LocalContext.current
     val graph = context.graph
-    val ui = remember { PlaybackUi(graph.library, graph.settings) { graph.localFiles } }
+    val ui = remember { PlaybackUi(graph.library, graph.settings, { graph.localFiles }, { MusicFiles { graph.jellyfin.downloads.fileFor(it) } }) }
     DisposableEffect(Unit) {
         val future = MediaController.Builder(context, SessionToken(context, ComponentName(context, PlaybackService::class.java))).buildAsync()
         future.addListener({ runCatching { future.get() }.getOrNull()?.let(ui::attach) }, ContextCompat.getMainExecutor(context))
