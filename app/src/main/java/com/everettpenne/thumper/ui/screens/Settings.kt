@@ -52,6 +52,7 @@ fun SettingsScreen(nav: Navigator, onBack: () -> Unit) {
     val leveling by graph.musicSettings.leveling.collectAsState()
     val crossfade by graph.musicSettings.crossfadeMs.collectAsState()
     val levelState by graph.levels.state.collectAsState()
+    val musicSnapshot by graph.music.snapshot.collectAsState()
     val linksInApp by settings.linksInApp.collectAsState(); val fullArticles by settings.fullArticles.collectAsState(); val readerScale by settings.readerScale.collectAsState()
     val wifiOnly by settings.wifiOnlyDownloads.collectAsState(); val deletePlayed by settings.deleteWhenPlayed.collectAsState(); val downloadBytes by graph.downloads.totalBytes.collectAsState(0L)
     val hasKeys by settings.hasPodcastIndexKeys.collectAsState(); val feeds by graph.library.feeds.collectAsState(); val refreshing by graph.refreshing.collectAsState()
@@ -114,13 +115,13 @@ fun SettingsScreen(nav: Navigator, onBack: () -> Unit) {
                         when {
                             levelState.running -> "Measuring ${levelState.done} of ${levelState.total}…"
                             levelState.error != null -> levelState.error!!
-                            else -> "${levelState.measured} of ${graph.music.snapshot.value.tracks.size} songs measured"
+                            else -> "${levelState.measured} of ${musicSnapshot.tracks.size} songs measured"
                         },
                         style = MaterialTheme.typography.bodySmall, color = if (levelState.error != null) Thumper.red else MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         GlassButton(if (levelState.running) "Measuring…" else "Measure Volume", {
-                            graph.levels.analyze(graph.music.snapshot.value.tracks)
+                            graph.levels.analyze(musicSnapshot.tracks)
                         }, enabled = !levelState.running, prominent = true)
                         if (levelState.running) GlassButton("Cancel", { graph.levels.cancel() })
                     }
