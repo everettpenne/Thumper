@@ -74,13 +74,18 @@ class MusicLibrary(private val context: Context) {
         }.getOrNull() ?: uri.lastPathSegment ?: "Audio"
         val track = readTags(uri, name, System.currentTimeMillis())
         if (track.durationMs <= 0L && track.title.isBlank()) return@withContext null
-        runCatching { Artwork.extract(context, track.albumKey, track.uri) }
+        runCatching { Artwork.extract(context, track.albumKey, track.uri, fileName = track.fileName, mime = track.mime) }
         track
     }
     fun tracks(ids: Collection<String>): List<Track> = ids.mapNotNull { byId[it] }
     val tracks: List<Track> get() = _snapshot.value.tracks
 
     fun scanMedia() = scan(source = LibrarySnapshot.SOURCE_MEDIA) { queryMediaStore() }
+
+    /** The music permission was declined: the scan reports it, with the way that needs no permission. */
+    fun permissionDeclined() {
+        _scan.value = ScanState(error = "Thumper needs permission to read your music. Allow Music and audio in App info, or choose a folder instead.")
+    }
     fun scanFolder(treeUri: String) = scan(source = LibrarySnapshot.SOURCE_FOLDER) {
         // A granted tree is a content:// address; a plain path (the app's own music folder, or a test) is walked directly.
         if (treeUri.startsWith("/")) queryDirectory(File(treeUri)) else queryTree(treeUri)
@@ -123,7 +128,7 @@ class MusicLibrary(private val context: Context) {
         if (Artwork.adopt(context, album.key, legacy)) return
         // A merged album's first track may have no art while a later one does, so try every track before giving up.
         for (track in album.tracks) {
-            if (Artwork.extract(context, album.key, track.uri, track.coverUri)) return
+            if (Artwork.extract(context, album.key, track.uri, track.coverUri, track.fileName, track.mime)) return
         }
     }
 
@@ -154,8 +159,14 @@ class MusicLibrary(private val context: Context) {
 
     private fun queryMediaStore(): List<Track> {
         // The audio view is the obvious place, but a phone whose media index has not finished with a file can hide it there. The files
-        // table with media_type = 2 is the same rows seen directly, and is the fallback when the first query comes back empty.
-        return queryAudio(MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL), null)
+        // table with media_type = 2 is the same rows seen directly, and is the fallback when the first query comes back empty. Ringtones,
+        // alarms, notification sounds and voice recordings are audio but not music, so neither query lists them.
+        val notMusic = "${MediaStore.Audio.Media.IS_RINGTONE} = 0 AND ${MediaStore.Audio.Media.IS_ALARM} = 0 AND " +
+            "${MediaStore.Audio.Media.IS_NOTIFICATION} = 0 AND ${MediaStore.Audio.Media.IS_RECORDING} = 0"
+        return queryAudio(MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL), notMusic).ifEmpty {
+            queryAudio(MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL),
+                "${MediaStore.Files.FileColumns.MEDIA_TYPE} = ${MediaStore.Files.FileColumns.MEDIA_TYPE_AUDIO} AND $notMusic")
+        }
     }
 
     private fun queryAudio(collection: Uri, selection: String?): List<Track> {

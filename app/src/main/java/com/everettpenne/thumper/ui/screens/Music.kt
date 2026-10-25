@@ -83,12 +83,14 @@ private fun MusicContent() {
         graph.music.scanFolder(uri.toString())
     }
     val askAudio = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) graph.music.scanMedia()
+        // Declined: say so (and what else works) rather than doing nothing; the scan's own message is the one the screen already shows.
+        if (granted) graph.music.scanMedia() else graph.music.permissionDeclined()
     }
     fun usePhoneMusic() {
-        if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-            askAudio.launch(Manifest.permission.READ_MEDIA_AUDIO)
-        } else graph.music.scanMedia()
+        // Android 13 and later ask for music by itself; Android 12 reads the media index with the older storage permission.
+        val permission = if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_AUDIO else Manifest.permission.READ_EXTERNAL_STORAGE
+        if (ContextCompat.checkSelfPermission(context, permission) != PackageManager.PERMISSION_GRANTED) askAudio.launch(permission)
+        else graph.music.scanMedia()
     }
 
     GlassScreen(bars = {

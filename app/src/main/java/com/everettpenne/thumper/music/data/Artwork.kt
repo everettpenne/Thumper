@@ -67,12 +67,16 @@ object Artwork {
     }
 
     /** Reads and saves a cover for the album: folder image, then Android's thumbnail, then the file's own tags. */
-    suspend fun extract(context: Context, albumKey: String, uri: String, coverUri: String? = null): Boolean = withContext(Dispatchers.IO) {
+    suspend fun extract(context: Context, albumKey: String, uri: String, coverUri: String? = null, fileName: String? = null,
+        mime: String? = null): Boolean = withContext(Dispatchers.IO) {
         if (has(context, albumKey)) return@withContext true
-        val isAiff = isAiffFileName(fileNameOf(uri))
+        // AIFF is known by the track's own file name or type: a phone-music track's address is a number (content://media/.../123), so the
+        // name in the address never said ".aiff" and AIFF covers (in the file's ID3 chunk, which Android's reader does not look at) were
+        // never read; on a library of AIFF files nearly every album showed the placeholder.
+        val isAiff = isAiffFileName(fileName?.takeIf { it.isNotBlank() } ?: fileNameOf(uri)) || isAiffMime(mime)
         val picture = coverUri?.let { decodeUri(context, it) }
-            ?: if (isAiff) aiffPicture(context, uri)
-            else runCatching { thumbnail(context, uri) }.getOrNull() ?: embedded(context, uri)
+            ?: (if (isAiff) aiffPicture(context, uri) else null)
+            ?: runCatching { thumbnail(context, uri) }.getOrNull() ?: embedded(context, uri)
         if (picture == null) return@withContext false
         write(context, albumKey, picture)
     }
@@ -132,6 +136,9 @@ object Artwork {
     }
 
     /** The cover in an AIFF file's ID3 chunk; Android's retriever cannot see it. */
+    /** audio/x-aiff, audio/aiff and audio/x-aifc, as Android's media index reports AIFF files. */
+    fun isAiffMime(mime: String?): Boolean = mime?.lowercase()?.let { it.contains("aiff") || it.contains("aifc") } == true
+
     private fun aiffPicture(context: Context, uri: String): Bitmap? = runCatching {
         Aiff.read(context, Uri.parse(uri))?.tags?.picture?.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
     }.getOrNull()

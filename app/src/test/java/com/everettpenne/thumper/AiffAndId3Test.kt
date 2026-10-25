@@ -178,5 +178,8 @@ class AiffAndId3Test {
     @Test fun aiffNamesAreRecognised() {
         listOf("a.aif", "b.AIFF", "c.aifc").forEach { assertTrue(it, isAiffFileName(it)) }
         listOf("a.mp3", "b.wav", "c.aiffl").forEach { assertEquals(it, false, isAiffFileName(it)) }
+        // A phone-music track is addressed by number, so its type is what says AIFF (Android reports audio/x-aiff).
+        listOf("audio/x-aiff", "audio/aiff", "audio/x-aifc").forEach { assertTrue(it, com.everettpenne.thumper.music.data.Artwork.isAiffMime(it)) }
+        listOf("audio/mpeg", "audio/mp4", null).forEach { assertEquals("$it", false, com.everettpenne.thumper.music.data.Artwork.isAiffMime(it)) }
     }
 }
