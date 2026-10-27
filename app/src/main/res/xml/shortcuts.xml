@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="player"
+        android:enabled="true"
+        android:shortcutShortLabel="@string/shortcut_player">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="thumper://player"
+            android:targetPackage="com.everettpenne.thumper"
+            android:targetClass="com.everettpenne.thumper.MainActivity" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="queue"
+        android:enabled="true"
+        android:shortcutShortLabel="@string/shortcut_queue">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="thumper://queue"
+            android:targetPackage="com.everettpenne.thumper"
+            android:targetClass="com.everettpenne.thumper.MainActivity" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="add-feed"
+        android:enabled="true"
+        android:shortcutShortLabel="@string/shortcut_add_feed">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="thumper://add"
+            android:targetPackage="com.everettpenne.thumper"
+            android:targetClass="com.everettpenne.thumper.MainActivity" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="downloads"
+        android:enabled="true"
+        android:shortcutShortLabel="@string/shortcut_downloads">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="thumper://downloads"
+            android:targetPackage="com.everettpenne.thumper"
+            android:targetClass="com.everettpenne.thumper.MainActivity" />
+    </shortcut>
+</shortcuts>

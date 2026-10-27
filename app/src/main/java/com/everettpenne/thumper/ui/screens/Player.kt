@@ -37,7 +37,7 @@ import com.everettpenne.thumper.playback.NextUp
 import com.everettpenne.thumper.data.model.Playable
 import com.everettpenne.thumper.ui.components.*
 import com.everettpenne.glass.*
-import com.everettpenne.media.FullscreenVideo
+import com.everettpenne.player.FullscreenPlayer
 import com.everettpenne.media.VideoSurface
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.everettpenne.glass.IosType
@@ -104,7 +104,9 @@ fun PlayerScreen(nav: Navigator, onBack: () -> Unit, inPictureInPicture: Boolean
                         GlassCircleButton({ fullscreen = true }, Modifier.align(Alignment.BottomEnd).padding(10.dp).background(androidx.compose.ui.graphics.Color.Black.copy(alpha = .4f), CircleShape),
                             size = 40.dp, description = "Full screen", shadowed = false) { Icon(Icons.Rounded.Fullscreen, null, tint = androidx.compose.ui.graphics.Color.White) }
                     }
-                    if (fullscreen && !inPictureInPicture) FullscreenVideo(video, pb.title) { fullscreen = false }
+                    // Glass's player: the gestures, speed, tracks, subtitles and picture-in-picture. Thumper keeps its queue, its saved places and its notification, so
+                    // the player only drives the playing item and shows no repeat button.
+                    if (fullscreen && !inPictureInPicture) FullscreenPlayer(video, pb.title) { fullscreen = false }
                 } else {
                     // Playing, the cover is full size; paused, it eases back, as Apple's players do, so the state reads from across the room.
                     val size by animateFloatAsState(if (pb.isPlaying || pb.buffering) 1f else .86f, spring(dampingRatio = .62f, stiffness = 260f), label = "cover")

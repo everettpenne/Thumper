@@ -17,8 +17,8 @@ android {
         applicationId = "com.everettpenne.thumper"
         minSdk = 31
         targetSdk = 36
-        versionCode = 20
-        versionName = "1.0.3"
+        versionCode = 21
+        versionName = "1.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     signingConfigs {
@@ -60,6 +60,8 @@ dependencies {
     implementation("com.everettpenne:updater")
     // Image viewer and full-screen video: also ../Glass.
     implementation("com.everettpenne:media")
+    // The full-screen video player (gestures, speed, tracks, subtitles, seek thumbnails): also ../Glass.
+    implementation("com.everettpenne:player")
     // The suite's built-in browser (Glass): links open over the app.
     implementation("com.everettpenne:browser")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.1")

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Music from Android's media index; a folder chosen with the system picker needs no permission. -->
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
@@ -67,5 +68,8 @@
                 <action android:name="androidx.media3.session.MediaSessionService" />
             </intent-filter>
         </service>
+
+        <!-- Glass's player brings a media service of its own for apps that have none; Thumper plays through PlaybackService above. -->
+        <service android:name="com.everettpenne.player.PlayerService" tools:node="remove" />
     </application>
 </manifest>
