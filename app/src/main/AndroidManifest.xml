@@ -20,6 +20,8 @@
         android:label="@string/app_name"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher"
+        android:description="@string/app_description"
+        android:category="audio"
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:supportsRtl="true"
@@ -45,6 +47,16 @@
                 <data android:scheme="pcast" />
                 <data android:scheme="podcast" />
             </intent-filter>
+            <!-- Sharing a page or feed address from a browser offers Thumper's Add feed sheet with the address already in it. -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+            <!-- Long-press actions: the player, Up Next, Add feed and Downloads. -->
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
         </activity>
 
         <service
