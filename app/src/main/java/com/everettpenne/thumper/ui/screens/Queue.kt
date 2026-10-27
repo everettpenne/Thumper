@@ -2,6 +2,11 @@ package com.everettpenne.thumper.ui.screens
 
 import com.everettpenne.glass.pressSwell
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.zIndex
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -36,12 +41,18 @@ fun QueueScreen(nav: Navigator, onBack: () -> Unit) {
     val library = graph.library
     val playback = LocalPlayback.current
     val queue by library.queue.collectAsState()
+    // Drag to reorder: hold a row, then drag it over the others; they move aside as it passes, and it settles where it is let go.
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+    var draggingId by remember { mutableStateOf<String?>(null) }
+    var dragDy by remember { mutableFloatStateOf(0f) }
+    val latestQueue by rememberUpdatedState(queue)
 
     GlassScreen(bars = {
         GlassCenteredTopBar("Up Next", onBack, Modifier.align(Alignment.TopCenter), subtitle = if (queue.isEmpty()) null else "${queue.size} item" + if (queue.size == 1) "" else "s",
             trailing = { if (queue.isNotEmpty()) GlassIconButton(Icons.Rounded.ClearAll, "Clear Up Next", { library.clearQueue() }, size = 44) })
     }) { contentPadding ->
-        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = contentPadding.calculateTopPadding() + 4.dp, bottom = contentPadding.calculateBottomPadding()), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = PaddingValues(top = contentPadding.calculateTopPadding() + 4.dp, bottom = contentPadding.calculateBottomPadding()), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             if (playback.hasEpisode) item {
                 SectionTitle("Now Playing"); Spacer(Modifier.height(6.dp))
                 Row(Modifier.fillMaxWidth().clickable(onClick = nav::openPlayer).padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -57,14 +68,41 @@ fun QueueScreen(nav: Navigator, onBack: () -> Unit) {
             if (queue.isEmpty()) item { EmptyState(Icons.Rounded.PlaylistAdd, "Nothing up next", "Add episodes with the ••• on any episode, or play an album from Music.") }
             else {
                 item { SectionTitle("Next") { if (!playback.hasEpisode) GlassButton("Play", { queue.firstOrNull()?.let { playback.play(it) } }, prominent = true) } }
-                itemsIndexed(queue, key = { _, e -> e.id }) { index, entry -> QueueRow(entry, index, queue.lastIndex, nav) }
+                itemsIndexed(queue, key = { _, e -> e.id }) { index, entry ->
+                    val dragging = draggingId == entry.id
+                    QueueRow(entry, index, queue.lastIndex, nav, Modifier
+                        .then(if (dragging) Modifier.zIndex(1f) else Modifier.animateItem())
+                        .graphicsLayer { translationY = if (dragging) dragDy else 0f; val s = if (dragging) 1.03f else 1f; scaleX = s; scaleY = s; shadowElevation = if (dragging) 24f else 0f }
+                        .pointerInput(entry.id) {
+                            detectDragGesturesAfterLongPress(
+                                onDragStart = { draggingId = entry.id; dragDy = 0f; haptic.performHapticFeedback(HapticFeedbackType.LongPress) },
+                                onDrag = { change, amount ->
+                                    change.consume(); dragDy += amount.y
+                                    val visible = listState.layoutInfo.visibleItemsInfo
+                                    val me = visible.firstOrNull { it.key == entry.id } ?: return@detectDragGesturesAfterLongPress
+                                    val centre = me.offset + me.size / 2f + dragDy
+                                    val current = latestQueue
+                                    val target = visible.firstOrNull { it.key != entry.id && centre >= it.offset && centre <= it.offset + it.size && current.any { q -> q.id == it.key } }
+                                    if (target != null) {
+                                        val from = current.indexOfFirst { it.id == entry.id }; val to = current.indexOfFirst { it.id == target.key }
+                                        if (from >= 0 && to >= 0 && from != to) {
+                                            library.moveInQueue(from, to)
+                                            dragDy += (me.offset - target.offset).toFloat()
+                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        }
+                                    }
+                                },
+                                onDragEnd = { draggingId = null; dragDy = 0f },
+                                onDragCancel = { draggingId = null; dragDy = 0f })
+                        })
+                }
             }
         }
     }
 }
 
 @Composable
-private fun QueueRow(entry: Playable, index: Int, last: Int, nav: Navigator) {
+private fun QueueRow(entry: Playable, index: Int, last: Int, nav: Navigator, modifier: Modifier = Modifier) {
     val library = LocalContext.current.graph.library
     val playback = LocalPlayback.current
     var menu by remember { mutableStateOf(false) }
@@ -72,7 +110,7 @@ private fun QueueRow(entry: Playable, index: Int, last: Int, nav: Navigator) {
         is Playable.Podcast -> ({ nav.openEpisode(entry.feed.id, entry.episode.id) })
         is Playable.Music -> ({ playback.play(entry) })
     }
-    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    Row(modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("${index + 1}", style = IosType.footnote, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(18.dp))
         Artwork(entry.artworkUrl, 52.dp)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {

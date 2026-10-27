@@ -50,7 +50,9 @@ fun ListenScreen(nav: Navigator) {
         val pullState = androidx.compose.material3.pulltorefresh.rememberPullToRefreshState()
         PullToRefreshBox(refreshing, { scope.launch { graph.refreshAll(force = true) } }, Modifier.fillMaxSize(), state = pullState,
             indicator = { GlassRefreshIndicator(pullState, refreshing, contentPadding.calculateTopPadding()) }) {
-            LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = contentPadding.calculateTopPadding() + 4.dp, bottom = contentPadding.calculateBottomPadding()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+            com.everettpenne.thumper.ui.ScrollToTopOnReselect(com.everettpenne.thumper.ui.Tab.Listen, listState)
+            LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = PaddingValues(top = contentPadding.calculateTopPadding() + 4.dp, bottom = contentPadding.calculateBottomPadding()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (podcasts.isEmpty()) item { EmptyListen(nav) }
                 if (inProgress.isNotEmpty()) item {
                     SectionTitle("Continue Listening")

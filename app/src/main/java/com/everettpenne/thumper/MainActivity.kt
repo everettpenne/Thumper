@@ -25,11 +25,25 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge(statusBarStyle = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT), navigationBarStyle = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT))
-        if (savedInstanceState == null) deepLink = intent?.data
-        setContent { ThumperRoot(deepLink, inPictureInPicture) }
+        if (savedInstanceState == null) deepLink = incoming(intent)
+        setContent { ThumperRoot(deepLink, inPictureInPicture, onDeepLinkHandled = { deepLink = null }) }
     }
 
-    override fun onNewIntent(intent: Intent) { super.onNewIntent(intent); deepLink = intent.data }
+    public override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        deepLink = incoming(intent)
+    }
+
+    /** A link, a shortcut's own address (thumper://...), or a page shared to Thumper: the first web address in the shared text. */
+    private fun incoming(intent: Intent?): Uri? {
+        if (intent?.action == Intent.ACTION_SEND && intent.type == "text/plain") {
+            val text = intent.getStringExtra(Intent.EXTRA_TEXT)?.trim().orEmpty()
+            if (text.isEmpty()) return null
+            return Uri.parse(Regex("""https?://\S+""").find(text)?.value ?: text)
+        }
+        return intent?.data
+    }
 
     /** Leaving the app (Home, recents, another app) floats a playing video episode; audio keeps going in its notification as before. */
     override fun onUserLeaveHint() {

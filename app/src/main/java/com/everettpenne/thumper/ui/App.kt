@@ -8,6 +8,10 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
@@ -51,8 +55,11 @@ object Routes {
     fun article(feedId: String, articleId: String) = "article/$feedId/$articleId"
 }
 
+/** How long a pushed screen takes to slide in or out, in ms. */
+private const val PUSH_MS = 320
+
 @Composable
-fun ThumperRoot(deepLink: Uri?, inPictureInPicture: Boolean) {
+fun ThumperRoot(deepLink: Uri?, inPictureInPicture: Boolean, onDeepLinkHandled: () -> Unit = {}) {
     ThumperTheme {
         var viewer by remember { mutableStateOf<Pair<List<String>, Int>?>(null) }
         val updater = com.everettpenne.updater.Updater.get(LocalContext.current, com.everettpenne.updater.UpdateConfig("everettpenne/Thumper", com.everettpenne.thumper.BuildConfig.VERSION_NAME))
@@ -79,8 +86,18 @@ fun ThumperRoot(deepLink: Uri?, inPictureInPicture: Boolean) {
                 override fun openSearch() { navController.navigate(Routes.SEARCH) { popUpTo(Routes.LISTEN) { inclusive = false }; launchSingleTop = true } }
             }
         }
-        // The downloads Live Update opens the Downloads screen; anything else handed to Thumper is a feed to add.
-        LaunchedEffect(deepLink) { deepLink?.let { if (it.scheme == "thumper" && it.host == "downloads") nav.openDownloads() else addFeed = it.toString() } }
+        // The downloads Live Update opens Downloads; a shortcut opens its own screen; anything else handed to Thumper is a feed to add.
+        LaunchedEffect(deepLink) {
+            val link = deepLink ?: return@LaunchedEffect
+            when {
+                link.scheme == "thumper" && link.host == "downloads" -> nav.openDownloads()
+                link.scheme == "thumper" && link.host == "player" -> nav.openPlayer()
+                link.scheme == "thumper" && link.host == "queue" -> nav.openQueue()
+                link.scheme == "thumper" && link.host == "add" -> addFeed = ""
+                else -> addFeed = link.toString()
+            }
+            onDeepLinkHandled()
+        }
         LaunchedEffect(openAfterAdd) { openAfterAdd?.let { nav.openFeed(it); openAfterAdd = null } }
 
         // The first time something plays, ask to show its notification (Android 13 and newer); sound in the background works either way.
@@ -98,7 +115,7 @@ fun ThumperRoot(deepLink: Uri?, inPictureInPicture: Boolean) {
         val tabBar: (@Composable () -> Unit)? = if (route == Routes.PLAYER) null else ({
             Column {
                 MiniPlayer(onOpen = nav::openPlayer, modifier = Modifier.padding(bottom = 2.dp))
-                GlassTabBar(Tab.bar, selected = lastTab, search = Tab.Search, onSelect = { tab -> navController.navigate(tab.route) { popUpTo(Routes.LISTEN) { inclusive = false }; launchSingleTop = true } })
+                GlassTabBar(Tab.bar, selected = lastTab, search = Tab.Search, onSelect = { tab -> if (tab.route == route) TabReselect.events.tryEmit(tab) else navController.navigate(tab.route) { popUpTo(Routes.LISTEN) { inclusive = false }; launchSingleTop = true } })
             }
         })
 
@@ -112,8 +129,23 @@ fun ThumperRoot(deepLink: Uri?, inPictureInPicture: Boolean) {
             Box(Modifier.fillMaxSize()) {
                 Box(Modifier.fillMaxSize().layerBackdrop(pageBackdrop).background(MaterialTheme.colorScheme.background))
                 CompositionLocalProvider(LocalGlassBackdrop provides pageBackdrop) {
+                    // Tabs cross-fade; a screen pushed from one (a show, an episode, Settings) slides in from the right over a page that drifts left and
+                    // dims, and slides back out the same way, as iOS's navigation does. The player keeps its own rise from the bottom.
+                    val tabRoutes = remember { Tab.entries.map { it.route }.toSet() }
+                    fun pushed(r: String?) = r != null && r !in tabRoutes && r != Routes.PLAYER
                     NavHost(navController, startDestination = Routes.LISTEN, modifier = Modifier.fillMaxSize(),
-                        enterTransition = { fadeIn() }, exitTransition = { fadeOut() }, popEnterTransition = { fadeIn() }, popExitTransition = { fadeOut() }) {
+                        enterTransition = {
+                            if (pushed(targetState.destination.route)) slideInHorizontally(tween(PUSH_MS, easing = FastOutSlowInEasing)) { it } + fadeIn(tween(PUSH_MS / 2)) else fadeIn()
+                        },
+                        exitTransition = {
+                            if (pushed(targetState.destination.route)) slideOutHorizontally(tween(PUSH_MS, easing = FastOutSlowInEasing)) { -it / 4 } + fadeOut(tween(PUSH_MS), targetAlpha = .55f) else fadeOut()
+                        },
+                        popEnterTransition = {
+                            if (pushed(initialState.destination.route)) slideInHorizontally(tween(PUSH_MS, easing = FastOutSlowInEasing)) { -it / 4 } + fadeIn(tween(PUSH_MS), initialAlpha = .55f) else fadeIn()
+                        },
+                        popExitTransition = {
+                            if (pushed(initialState.destination.route)) slideOutHorizontally(tween(PUSH_MS, easing = FastOutSlowInEasing)) { it } + fadeOut(tween(PUSH_MS / 2, delayMillis = PUSH_MS / 2)) else fadeOut()
+                        }) {
                         composable(Routes.LISTEN) { ListenScreen(nav) }
                         composable(Routes.READ) { ReadScreen(nav) }
                         composable(Routes.MUSIC) { MusicScreen() }

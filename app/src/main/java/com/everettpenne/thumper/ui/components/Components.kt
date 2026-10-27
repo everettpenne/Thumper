@@ -82,7 +82,9 @@ fun FeedLogo(feed: Feed, size: Dp, modifier: Modifier = Modifier) {
 /** A round play/pause button for a row: shows pause while this episode is the one playing. */
 @Composable
 fun PlayCircle(playing: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, size: Dp = 40.dp) {
-    Box(modifier.size(size).clip(CircleShape).background(Thumper.accent.copy(alpha = .14f)).clickable(onClick = onClick)
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+    Box(modifier.size(size).clip(CircleShape).background(Thumper.accent.copy(alpha = .14f))
+        .clickable { haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove); onClick() }
         .semantics { contentDescription = if (playing) "Pause" else "Play" }, contentAlignment = Alignment.Center) {
         Icon(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, null, tint = Thumper.accent, modifier = Modifier.size(size * .62f))
     }
