@@ -17,8 +17,8 @@ android {
         applicationId = "com.everettpenne.thumper"
         minSdk = 31
         targetSdk = 36
-        versionCode = 21
-        versionName = "1.1.0"
+        versionCode = 22
+        versionName = "1.1.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     signingConfigs {
