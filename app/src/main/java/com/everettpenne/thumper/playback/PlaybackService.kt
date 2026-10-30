@@ -168,7 +168,11 @@ class PlaybackService : MediaSessionService() {
     }
 
     private fun buildPlayer(gain: GainProcessor): ExoPlayer {
-        val dataSource = DefaultDataSource.Factory(this, OkHttpDataSource.Factory(graph.http))
+        // Bugfix, root cause: this factory sent OkHttp's default User-Agent ("okhttp/4.x"), which some podcast hosts treat as a bot and refuse. Buzzsprout's CDN
+        // (Tech Won't Save Us and every other Buzzsprout show) answers it with 403 after the pscrb.fm tracking redirects, while the feed itself, the artwork and
+        // downloads (all of which send "Thumper/0.1") load fine. Symptom: episodes list and look available, but playing one fails with "Source error".
+        // Sending the same Thumper user agent as everywhere else makes the host answer 200 audio/mpeg.
+        val dataSource = DefaultDataSource.Factory(this, OkHttpDataSource.Factory(graph.http).setUserAgent("Thumper/0.1 (Android podcast and feed reader)"))
         return ExoPlayer.Builder(this)
             .setMediaSourceFactory(DefaultMediaSourceFactory(dataSource, extractors))
             .setRenderersFactory(LevelRenderersFactory(this, gain))
